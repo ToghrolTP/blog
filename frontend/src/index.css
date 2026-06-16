@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+:root {
+  --font-primary: "Inter", "Vazirmatn", system-ui, sans-serif;
+  --font-code: "JetBrains Mono", "Vazirmatn", monospace;
+}
+
+[dir="rtl"] {
+  --font-primary: "Vazirmatn", system-ui, sans-serif;
+}
+
+@theme {
+  /* Gruvbox Dark Theme */
+  --color-gb-bg: #282828;
+  --color-gb-bg-soft: #3c3836;
+  --color-gb-bg-light: #504945;
+  --color-gb-fg: #ebdbb2;
+  --color-gb-fg-dark: #a89984;
+  --color-gb-red: #cc241d;
+  --color-gb-red-light: #fb4934;
+  --color-gb-green: #98971a;
+  --color-gb-green-light: #b8bb26;
+  --color-gb-yellow: #d79921;
+  --color-gb-yellow-light: #fabd2f;
+  --color-gb-blue: #458588;
+  --color-gb-blue-light: #83a598;
+  --color-gb-purple: #b16286;
+  --color-gb-purple-light: #d3869b;
+  --color-gb-aqua: #689d6a;
+  --color-gb-aqua-light: #8ec07c;
+  --color-gb-orange: #d65d0e;
+  --color-gb-orange-light: #fe8019;
+
+  --animate-pixel-float: pixel-float 2s ease-in-out infinite;
+
+  @keyframes pixel-float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  --font-mono: var(--font-code);
+  --font-sans: var(--font-primary);
+}
+
+/* Persian & RTL Typography Standards */
+[dir="rtl"] {
+  line-height: 1.8 !important;
+}
+
+[dir="rtl"], [dir="rtl"] * {
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+}
+
+[dir="rtl"] button {
+  line-height: 1.5 !important;
+}
+
+@layer utilities {
+  .rtl {
+    direction: rtl;
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Enforce standard spacing and sans-serif font for all typography classes in RTL */
+[dir="rtl"] .font-mono, 
+[dir="rtl"] .font-sans,
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6,
+[dir="rtl"] .text-3xl, [dir="rtl"] .text-4xl, [dir="rtl"] .text-2xl, [dir="rtl"] .text-xl {
+  font-family: var(--font-sans) !important; /* Prevents monospace space character from causing wide word gaps */
+  letter-spacing: normal !important;
+  word-spacing: normal !important;
+}
+
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6,
+[dir="rtl"] .text-3xl, [dir="rtl"] .text-4xl, [dir="rtl"] .text-2xl, [dir="rtl"] .text-xl {
+  line-height: 1.5 !important;
+}
+
+/* Restore monospace for explicitly LTR code blocks even if nested inside RTL */
+[dir="rtl"] [dir="ltr"] .font-mono,
+[dir="ltr"] .font-mono {
+  font-family: var(--font-mono) !important;
+}
+
+body {
+  @apply bg-gb-bg text-gb-fg font-sans antialiased;
+}

@@ -1,0 +1,73 @@
+# ========================
+# Rust
+# ========================
+backend/target/
+
+# ========================
+# Node.js
+# ========================
+frontend/node_modules/
+frontend/dist/
+
+# ========================
+# Vite cache
+# ========================
+.vite/
+frontend/.vite/
+
+# ========================
+# Environment / Secrets
+# ========================
+.env
+backend/.env
+
+# ========================
+# Database (runtime data)
+# ========================
+backend/db/*.db
+backend/db/*.db-shm
+backend/db/*.db-wal
+
+# ========================
+# Backups (runtime data)
+# ========================
+backend/backups/
+
+# ========================
+# Uploads (user content)
+# ========================
+backend/uploads/
+
+# ========================
+# Vendored icon sets (unused, 40MB)
+# ========================
+frontend/phosphoricon/
+
+# ========================
+# AI agent / tool files
+# ========================
+.agent/
+.agents/
+
+# ========================
+# IDE / Editor
+# ========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ========================
+# OS
+# ========================
+.DS_Store
+Thumbs.db
+
+# ========================
+# Miscellaneous
+# ========================
+*.zip
+*.log
+__pycache__/
+*.pyc

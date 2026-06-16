@@ -1,0 +1,17 @@
+{
+  "platform": "docker",
+  "port": 3000,
+  "disks": [
+    {
+      "name": "blog-db",
+      "mountTo": "/app/backend/db"
+    },
+    {
+      "name": "blog-uploads",
+      "mountTo": "/app/backend/uploads"
+    }
+  ],
+  "build": {
+    "location": "germany"
+  }
+}

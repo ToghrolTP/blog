@@ -1,0 +1,483 @@
+import { useState, useEffect, useRef } from 'react';
+import { flushSync } from 'react-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { Header } from './components/Header';
+import { Footer } from './components/Footer';
+import { PostList } from './components/PostList';
+import { PostDetail } from './components/PostDetail';
+import { AdminPanel } from './components/AdminPanel';
+import { Store } from './components/Store';
+import { ProductDetail } from './components/ProductDetail';
+import { TerminalWindowIcon } from './components/Icons';
+import { Post } from './types';
+import { UpvoteProvider } from './contexts/UpvoteContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { SEO } from './components/SEO';
+import { Button } from './components/ui/Button';
+import { CategoryButton } from './components/ui/CategoryButton';
+
+function Home() {
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'upvotes'>('newest');
+  const [readTimeFilter, setReadTimeFilter] = useState<'all' | 'short' | 'medium' | 'long'>('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterRef = useRef<HTMLDivElement>(null);
+  const { language, t } = useLanguage();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+        setIsFilterOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/posts')
+      .then(res => res.json())
+      .then(data => setPosts(data))
+      .catch(err => console.error("Failed to fetch posts:", err));
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeElement = document.activeElement;
+      if (activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.hasAttribute('contenteditable')
+      )) {
+        return;
+      }
+
+      if (e.key === '/') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const languagePosts = posts.filter(p => p.translations?.some(t => t.language === language));
+
+  const filteredByTypePosts = selectedType 
+    ? languagePosts.filter(post => post.type === selectedType)
+    : languagePosts;
+
+  const tagCounts = filteredByTypePosts.reduce((acc, post) => {
+    post.tags.forEach(tag => {
+      acc[tag] = (acc[tag] || 0) + 1;
+    });
+    return acc;
+  }, {} as Record<string, number>);
+
+  const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
+  const filteredPosts = filteredByTypePosts.filter(post => {
+    // 1. Tag filter
+    const matchesTag = selectedTag ? post.tags.includes(selectedTag) : true;
+    if (!matchesTag) return false;
+
+    // 2. Read Time filter
+    if (readTimeFilter !== 'all') {
+      const translation = post.translations?.find(t => t.language === language)
+        || post.translations?.find(t => t.language === 'en');
+      if (!translation) return false;
+      
+      const rt = translation.readTime;
+      if (readTimeFilter === 'short' && rt >= 5) return false;
+      if (readTimeFilter === 'medium' && (rt < 5 || rt > 10)) return false;
+      if (readTimeFilter === 'long' && rt <= 10) return false;
+    }
+
+    // 3. Search query filter
+    if (!debouncedQuery.trim()) return true;
+
+    const query = debouncedQuery.toLowerCase().trim();
+
+    const translation = post.translations?.find(t => t.language === language)
+      || post.translations?.find(t => t.language === 'en');
+
+    if (!translation) return false;
+
+    const matchesTitle = translation.title.toLowerCase().includes(query);
+    const matchesSummary = translation.summary.toLowerCase().includes(query);
+    const matchesContent = translation.content.toLowerCase().includes(query);
+    const matchesTags = post.tags.some(tag => tag.toLowerCase().includes(query));
+    const matchesId = post.id.toLowerCase().includes(query);
+
+    return matchesTitle || matchesSummary || matchesContent || matchesTags || matchesId;
+  });
+
+  const sortedPosts = [...filteredPosts].sort((a, b) => {
+    if (sortBy === 'upvotes') {
+      return b.upvotes - a.upvotes;
+    }
+    const timeA = new Date(a.date).getTime();
+    const timeB = new Date(b.date).getTime();
+    if (sortBy === 'oldest') {
+      return timeA - timeB;
+    }
+    return timeB - timeA;
+  });
+
+  const descHtml = t('welcome_desc')
+    .replace('<1>', '<span class="text-gb-aqua-light">')
+    .replace('</1>', '</span>')
+    .replace('<2>', '<span class="text-gb-yellow-light">')
+    .replace('</2>', '</span>')
+    .replace('<3>', '<span class="text-gb-green-light">')
+    .replace('</3>', '</span>');
+
+  const updateStateWithTransition = (updateFunc: () => void) => {
+    if (!document.startViewTransition) {
+      updateFunc();
+      return;
+    }
+    document.startViewTransition(() => {
+      flushSync(() => {
+        updateFunc();
+      });
+    });
+  };
+
+  const handleTypeToggle = (type: string) => {
+    updateStateWithTransition(() => {
+      const nextType = selectedType === type ? null : type;
+      setSelectedType(nextType);
+      if (selectedTag) {
+        const activeTags = new Set(
+          languagePosts
+            .filter((p) => !nextType || p.type === nextType)
+            .flatMap((p) => p.tags)
+        );
+        if (!activeTags.has(selectedTag)) {
+          setSelectedTag(null);
+        }
+      }
+    });
+  };
+
+  return (
+    <div className="animate-in fade-in duration-700">
+      <SEO title={`${t('welcome_title') || 'Welcome'} | My Blog`} />
+      <div className="mb-16 font-mono text-gb-fg-dark border-l-4 border-gb-orange-light pl-6 py-2" dir={language === 'fa' ? 'rtl' : 'ltr'}>
+        <p className="text-4xl font-bold text-gb-fg mb-4 tracking-tight rtl:tracking-normal">{t('welcome_title')}</p>
+        <p className="text-lg leading-relaxed" dangerouslySetInnerHTML={{ __html: descHtml }}></p>
+      </div>
+
+      {/* Category Banners Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+        <CategoryButton
+          active={selectedType === 'linux'}
+          onClick={() => handleTypeToggle('linux')}
+          imgSrc="/chatgpt-linux-pixel-art.png"
+          imgAlt={t('linux_cat')}
+          label={t('linux_cat')}
+        />
+        <CategoryButton
+          active={selectedType === 'cybersecurity'}
+          onClick={() => handleTypeToggle('cybersecurity')}
+          imgSrc="/cybersecurity-guy.png"
+          imgAlt={t('cybersecurity_cat')}
+          label={t('cybersecurity_cat')}
+        />
+        <CategoryButton
+          active={selectedType === 'backend'}
+          onClick={() => handleTypeToggle('backend')}
+          imgSrc="/backend_gear_icon_gruvbox_transparent.png"
+          imgAlt={t('backend_cat')}
+          label={t('backend_cat')}
+        />
+        <CategoryButton
+          active={selectedType === 'devops'}
+          onClick={() => handleTypeToggle('devops')}
+          imgSrc="/devops_icon_gruvbox.png"
+          imgAlt={t('devops_cat')}
+          label={t('devops_cat')}
+        />
+        <CategoryButton
+          active={selectedType === 'terminal'}
+          onClick={() => handleTypeToggle('terminal')}
+          imgSrc="/terminal_personal_computer_icon_gruvbox.png"
+          imgAlt={t('terminal_cat')}
+          label={t('terminal_cat')}
+        />
+        <CategoryButton
+          active={selectedType === 'academic'}
+          onClick={() => handleTypeToggle('academic')}
+          imgSrc="/article_icon_gruvbox.png"
+          imgAlt={t('academic_cat')}
+          label={t('academic_cat')}
+        />
+      </div>
+
+      {/* Search & Filter Container */}
+      <div className="mb-12 flex items-center gap-3 max-w-xl relative" ref={filterRef}>
+        <div className="relative flex-1 flex items-center">
+          <span className="absolute start-3 text-gb-fg-dark/60">
+            <Search size={18} />
+          </span>
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('search_posts_placeholder')}
+            className="w-full bg-gb-bg-soft/20 text-gb-fg placeholder:text-gb-fg-dark/50 border-2 border-gb-bg-soft focus:border-gb-orange-light focus:outline-none focus:bg-gb-bg-soft/40 rounded px-10 py-3 font-mono text-sm transition-all"
+            dir={language === 'fa' ? 'rtl' : 'ltr'}
+          />
+          <div className="absolute end-3 flex items-center gap-2">
+            {searchQuery ? (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setDebouncedQuery('');
+                }}
+                className="text-gb-fg-dark hover:text-gb-red-light transition-colors cursor-pointer"
+                title="Clear search"
+              >
+                <X size={18} />
+              </button>
+            ) : (
+              <kbd className="border border-gb-fg-dark/30 text-gb-fg-dark/50 px-1.5 py-0.5 rounded text-[10px] bg-gb-bg-soft/40 font-mono select-none">
+                /
+              </kbd>
+            )}
+          </div>
+        </div>
+
+        {/* Filter popover button */}
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+            className={`flex items-center gap-2 px-4 py-3 font-mono text-sm border-2 rounded transition-all cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-gb-orange-light focus:ring-offset-2 focus:ring-offset-gb-bg ${
+              isFilterOpen || sortBy !== 'newest' || readTimeFilter !== 'all'
+                ? 'bg-gb-orange-light text-gb-bg border-gb-orange-light shadow-[0_0_10px_rgba(254,128,25,0.25)] font-bold'
+                : 'bg-gb-bg-soft/20 text-gb-fg border-gb-bg-soft hover:border-gb-orange-light/40 hover:bg-gb-bg-soft/30'
+            }`}
+            title="Filter posts"
+          >
+            <SlidersHorizontal size={18} />
+            <span className="hidden sm:inline">{t('filters')}</span>
+            {(sortBy !== 'newest' || readTimeFilter !== 'all') && (
+              <span className="w-2.5 h-2.5 rounded-full bg-current border border-gb-bg-soft" />
+            )}
+          </button>
+
+          {isFilterOpen && (
+            <div className={`absolute ${language === 'fa' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'} mt-2 w-64 bg-gb-bg border-2 border-gb-bg-soft shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-4 z-40 font-mono text-xs rounded transition-all animate-in fade-in slide-in-from-top-2 duration-200`}>
+              {/* Sort By section */}
+              <div className="mb-4">
+                <div className="text-gb-orange-light font-bold mb-2 uppercase tracking-wider">{t('sort_by')}</div>
+                <div className="flex flex-col gap-1.5">
+                  {(['newest', 'oldest', 'upvotes'] as const).map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => setSortBy(option)}
+                      className={`text-start w-full px-2.5 py-1.5 rounded transition-all cursor-pointer ${
+                        sortBy === option
+                          ? 'bg-gb-orange-light/10 text-gb-orange-light font-bold border-l-2 border-gb-orange-light'
+                          : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
+                      }`}
+                      dir={language === 'fa' ? 'rtl' : 'ltr'}
+                    >
+                      {option === 'newest' && t('newest')}
+                      {option === 'oldest' && t('oldest')}
+                      {option === 'upvotes' && t('most_upvoted')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Read Time filter section */}
+              <div>
+                <div className="text-gb-orange-light font-bold mb-2 uppercase tracking-wider">{t('filter_read_time')}</div>
+                <div className="flex flex-col gap-1.5">
+                  {(['all', 'short', 'medium', 'long'] as const).map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => setReadTimeFilter(option)}
+                      className={`text-start w-full px-2.5 py-1.5 rounded transition-all cursor-pointer ${
+                        readTimeFilter === option
+                          ? 'bg-gb-orange-light/10 text-gb-orange-light font-bold border-l-2 border-gb-orange-light'
+                          : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
+                      }`}
+                      dir={language === 'fa' ? 'rtl' : 'ltr'}
+                    >
+                      {option === 'all' && t('all')}
+                      {option === 'short' && t('short_read')}
+                      {option === 'medium' && t('medium_read')}
+                      {option === 'long' && t('long_read')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-8 md:gap-12">
+        <aside className="w-full md:w-56 shrink-0">
+          <div className="mb-4 text-lg font-bold text-gb-orange-light border-b border-gb-bg-soft pb-2 font-mono" dir={language === 'fa' ? 'rtl' : 'ltr'}>
+            {t('micro_categories')}
+          </div>
+          {sortedTags.length > 0 ? (
+            <ul className="flex md:flex-col gap-3 overflow-x-auto md:overflow-visible pb-4 md:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              {sortedTags.map(([tag, count]) => {
+                const isActive = selectedTag === tag;
+                return (
+                  <li key={tag} className="shrink-0">
+                    <button
+                      onClick={() => updateStateWithTransition(() => setSelectedTag(isActive ? null : tag))}
+                      className={`flex items-center justify-between w-full text-left px-3 py-2 rounded transition-all font-mono text-sm group cursor-pointer ${
+                        isActive 
+                          ? 'bg-gb-orange-light/10 text-gb-orange-light border-l-2 border-gb-orange-light shadow-[inset_2px_0_0_0_rgba(255,160,102,0.2)]' 
+                          : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
+                      }`}
+                      dir={language === 'fa' ? 'rtl' : 'ltr'}
+                    >
+                      <span className="truncate mr-3 ml-3">#{tag}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full tabular-nums ${
+                        isActive ? 'bg-gb-orange-light/20 text-gb-orange-light' : 'bg-gb-bg border border-gb-bg-soft group-hover:border-gb-fg-dark/30'
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm font-mono text-gb-fg-dark" dir={language === 'fa' ? 'rtl' : 'ltr'}>{t('no_categories')}</p>
+          )}
+        </aside>
+
+        <div className="flex-1 min-w-0">
+          {selectedTag && (
+            <div className="mb-6 flex items-center justify-between bg-gb-bg-soft/50 rounded-lg px-4 py-3 font-mono text-sm border border-gb-bg-soft" dir={language === 'fa' ? 'rtl' : 'ltr'}>
+              <span>
+                {t('showing_posts_tagged')}<span className="text-gb-orange-light font-bold">#{selectedTag}</span>
+              </span>
+              <button 
+                onClick={() => updateStateWithTransition(() => setSelectedTag(null))}
+                className="text-gb-fg-dark hover:text-gb-red-light transition-colors underline decoration-gb-red-light/30 underline-offset-2 cursor-pointer"
+              >
+                {t('clear_filter')}
+              </button>
+            </div>
+          )}
+          {sortedPosts.length > 0 ? (
+            <PostList posts={sortedPosts} />
+          ) : (
+            <div className="text-center py-16 border-2 border-dashed border-gb-bg-soft rounded-lg font-mono text-gb-fg-dark" dir={language === 'fa' ? 'rtl' : 'ltr'}>
+              <div className="text-gb-orange-light text-lg font-bold mb-2">
+                {t('no_posts_found')}
+              </div>
+              <p className="text-sm text-gb-fg-dark mb-6">
+                {language === 'fa'
+                  ? 'تغییر فیلترها یا عبارت جستجو ممکن است به نتایج بیشتری منجر شود.'
+                  : 'Try adjusting your search term or active category filters to get matches.'}
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  updateStateWithTransition(() => {
+                    setSearchQuery('');
+                    setDebouncedQuery('');
+                    setSelectedTag(null);
+                    setSelectedType(null);
+                    setSortBy('newest');
+                    setReadTimeFilter('all');
+                  });
+                }}
+                className="cursor-pointer"
+              >
+                {t('reset_filters_search')}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AppContent() {
+  const [isBooting, setIsBooting] = useState(true);
+  const { t } = useLanguage();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsBooting(false);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (isBooting) {
+    return (
+      <div className="min-h-screen bg-gb-bg flex flex-col items-center justify-center p-6">
+        <div className="text-5xl mb-4 animate-pulse flex justify-center"><TerminalWindowIcon /></div>
+        <p className="text-gb-fg-dark font-mono animate-pulse">{t('mounting')}</p>
+      </div>
+    );
+  }
+
+  return (
+    <AuthProvider>
+      <UpvoteProvider>
+        <div className="min-h-screen bg-gb-bg text-gb-fg p-6 sm:p-8 md:p-12 selection:bg-gb-bg-light selection:text-gb-orange-light">
+            <div className="max-w-5xl mx-auto w-full">
+              <Header />
+              
+              <main className="mt-16 min-h-[50vh]">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/store" element={<Store />} />
+                  <Route path="/store/product/:id" element={<ProductDetail />} />
+                  <Route path="/post/:id" element={<PostDetail />} />
+                  <Route path="/fa" element={<Home />} />
+                  <Route path="/fa/store" element={<Store />} />
+                  <Route path="/fa/store/product/:id" element={<ProductDetail />} />
+                  <Route path="/fa/post/:id" element={<PostDetail />} />
+                  <Route path="/admin" element={<AdminPanel />} />
+                </Routes>
+              </main>
+              
+              <Footer />
+            </div>
+          </div>
+      </UpvoteProvider>
+    </AuthProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <LanguageProvider>
+        <AppContent />
+      </LanguageProvider>
+    </BrowserRouter>
+  );
+}
