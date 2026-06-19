@@ -86,6 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/posts/{id}/upvote", post(upvotes::toggle_post_upvote))
         .route("/api/comments/{id}/upvote", post(upvotes::toggle_comment_upvote))
         .route("/api/upload", post(upload::upload_image))
+        .route("/api/settings", get(handlers::get_settings).put(handlers::update_setting))
         .route("/api/products", get(products::get_products).post(products::create_product))
         .route("/api/products/{id}", get(products::get_product).put(products::update_product).delete(products::delete_product))
         .route("/store/product/{id}", get(serve_seo_product))
@@ -248,6 +249,29 @@ async fn init_db(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>> {
             username TEXT NOT NULL,
             avatar_url TEXT NOT NULL
         )
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        INSERT OR IGNORE INTO settings (key, value) VALUES 
+        ('store_maintenance', 'false'),
+        ('blog_maintenance', 'false'),
+        ('comments_maintenance', 'false'),
+        ('site_maintenance', 'false')
         "#
     )
     .execute(pool)
