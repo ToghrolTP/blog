@@ -17,9 +17,11 @@ import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { SEO } from './components/SEO';
 import { Button } from './components/ui/Button';
 import { CategoryButton } from './components/ui/CategoryButton';
+import { Pagination } from './components/ui/Pagination';
 
 function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +56,10 @@ function Home() {
     }, 150);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedTag, selectedType, debouncedQuery, sortBy, readTimeFilter]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -139,6 +145,19 @@ function Home() {
     return timeB - timeA;
   });
 
+  const POSTS_PER_PAGE = 6;
+  const totalPages = Math.ceil(sortedPosts.length / POSTS_PER_PAGE);
+  const paginatedPosts = sortedPosts.slice(
+    (currentPage - 1) * POSTS_PER_PAGE,
+    currentPage * POSTS_PER_PAGE
+  );
+
+  const handlePageChange = (page: number) => {
+    updateStateWithTransition(() => {
+      setCurrentPage(page);
+    });
+  };
+
   const descHtml = t('welcome_desc')
     .replace('<1>', '<span class="text-gb-aqua-light">')
     .replace('</1>', '</span>')
@@ -178,7 +197,7 @@ function Home() {
 
   return (
     <div className="animate-in fade-in duration-700">
-      <SEO title={`${t('welcome_title') || 'Welcome'} | My Blog`} />
+      <SEO title={`${t('welcome_title') || 'Welcome'} | Log40`} />
       <div className="mb-16 font-mono text-gb-fg-dark border-l-4 border-gb-orange-light pl-6 py-2" dir={language === 'fa' ? 'rtl' : 'ltr'}>
         <p className="text-4xl font-bold text-gb-fg mb-4 tracking-tight rtl:tracking-normal">{t('welcome_title')}</p>
         <p className="text-lg leading-relaxed" dangerouslySetInnerHTML={{ __html: descHtml }}></p>
@@ -386,8 +405,16 @@ function Home() {
               </button>
             </div>
           )}
-          {sortedPosts.length > 0 ? (
-            <PostList posts={sortedPosts} />
+          {paginatedPosts.length > 0 ? (
+            <>
+              <PostList posts={paginatedPosts} />
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+                language={language}
+              />
+            </>
           ) : (
             <div className="text-center py-16 border-2 border-dashed border-gb-bg-soft rounded-lg font-mono text-gb-fg-dark" dir={language === 'fa' ? 'rtl' : 'ltr'}>
               <div className="text-gb-orange-light text-lg font-bold mb-2">
