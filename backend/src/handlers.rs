@@ -7,9 +7,29 @@ use sqlx::SqlitePool;
 
 use crate::models::{PostDb, PostResponse, PostTranslationDb, PostTranslationResponse};
 
+async fn is_under_maintenance(pool: &SqlitePool, key: &str) -> bool {
+    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = ?")
+        .bind(key)
+        .fetch_optional(pool)
+        .await
+        .unwrap_or(None);
+    if let Some(r) = row {
+        r.0 == "true"
+    } else {
+        false
+    }
+}
+
 pub async fn get_posts(
+    headers: axum::http::HeaderMap,
     State(pool): State<SqlitePool>,
 ) -> Result<Json<Vec<PostResponse>>, (StatusCode, String)> {
+    if is_under_maintenance(&pool, "site_maintenance").await || is_under_maintenance(&pool, "blog_maintenance").await {
+        if check_auth(&headers).is_err() {
+            return Err((StatusCode::SERVICE_UNAVAILABLE, "Blog is under maintenance".to_string()));
+        }
+    }
+
     let posts_db = sqlx::query_as::<_, PostDb>("SELECT id, date, tags, upvotes, thumbnail_url, type FROM posts ORDER BY date DESC")
         .fetch_all(&pool)
         .await
@@ -91,9 +111,15 @@ async fn get_post_internal(pool: &SqlitePool, id: String) -> Result<Json<PostRes
 }
 
 pub async fn get_post(
+    headers: axum::http::HeaderMap,
     State(pool): State<SqlitePool>,
     Path(id): Path<String>,
 ) -> Result<Json<PostResponse>, (StatusCode, String)> {
+    if is_under_maintenance(&pool, "site_maintenance").await || is_under_maintenance(&pool, "blog_maintenance").await {
+        if check_auth(&headers).is_err() {
+            return Err((StatusCode::SERVICE_UNAVAILABLE, "Blog is under maintenance".to_string()));
+        }
+    }
     get_post_internal(&pool, id).await
 }
 
@@ -314,4 +340,53 @@ pub async fn robots_txt() -> (axum::http::HeaderMap, String) {
     );
     
     (headers, content)
+}
+
+#[derive(serde::Deserialize)]
+pub struct UpdateSettingRequest {
+    pub key: String,
+    pub value: String,
+}
+
+pub async fn get_settings(
+    State(pool): State<SqlitePool>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let rows: Vec<(String, String)> = sqlx::query_as("SELECT key, value FROM settings")
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+    
+    let mut map = serde_json::Map::new();
+    for (key, value) in rows {
+        let val = if value == "true" {
+            serde_json::Value::Bool(true)
+        } else if value == "false" {
+            serde_json::Value::Bool(false)
+        } else {
+            serde_json::Value::String(value)
+        };
+        map.insert(key, val);
+    }
+    Ok(Json(serde_json::Value::Object(map)))
+}
+
+pub async fn update_setting(
+    headers: axum::http::HeaderMap,
+    State(pool): State<SqlitePool>,
+    Json(payload): Json<UpdateSettingRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    check_auth(&headers)?;
+    
+    if payload.key.trim().is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Key cannot be empty".to_string()));
+    }
+    
+    sqlx::query("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
+        .bind(&payload.key)
+        .bind(&payload.value)
+        .execute(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+        
+    Ok(StatusCode::OK)
 }
