@@ -13,7 +13,8 @@ import {
   MessageSquareIcon, 
   TagIcon, 
   ArrowLeftIcon, 
-  FileTextIcon 
+  FileTextIcon,
+  Settings
 } from 'lucide-react';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { Input } from './ui/Input';
@@ -25,10 +26,17 @@ export function AdminPanel() {
   const navigate = useNavigate();
   const [secret, setSecret] = useState(localStorage.getItem('adminSecret') || '');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'products'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'products' | 'settings'>('posts');
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [settings, setSettings] = useState<{
+    site_maintenance?: boolean;
+    blog_maintenance?: boolean;
+    comments_maintenance?: boolean;
+    store_maintenance?: boolean;
+  }>({});
+  const [savingSettings, setSavingSettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -91,11 +99,58 @@ export function AdminPanel() {
     setLoading(false);
   };
 
+  const fetchSettings = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/settings');
+      if (res.ok) {
+        setSettings(await res.json());
+      } else {
+        setError('Failed to fetch settings');
+      }
+    } catch (err) {
+      setError('Network error');
+    }
+    setLoading(false);
+  };
+
+  const handleToggleSetting = async (
+    key: 'site_maintenance' | 'blog_maintenance' | 'comments_maintenance' | 'store_maintenance',
+    checked: boolean
+  ) => {
+    setSavingSettings(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${secret}`
+        },
+        body: JSON.stringify({
+          key,
+          value: checked ? 'true' : 'false'
+        })
+      });
+      if (res.ok) {
+        setSettings(prev => ({ ...prev, [key]: checked }));
+        setSuccessMessage('Settings saved successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        setError('Failed to save settings');
+      }
+    } catch (err) {
+      setError('Network error saving settings');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       if (activeTab === 'posts') fetchPosts(secret);
       else if (activeTab === 'comments') fetchComments(secret);
       else if (activeTab === 'products') fetchProducts();
+      else if (activeTab === 'settings') fetchSettings();
     }
   }, [isAuthenticated, activeTab]);
 
@@ -1027,6 +1082,18 @@ export function AdminPanel() {
               <span>Products</span>
               <span className="ml-auto text-xs bg-gb-bg-soft px-1.5 py-0.5 rounded border border-gb-bg-light/40 font-bold tabular-nums">{products.length}</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded transition-all text-sm w-full text-start shrink-0 cursor-pointer ${
+                activeTab === 'settings'
+                  ? 'bg-gb-orange-light/10 text-gb-orange-light border-l-2 border-gb-orange-light font-bold'
+                  : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
+              }`}
+            >
+              <Settings size={18} />
+              <span>Settings</span>
+            </button>
           </nav>
         </div>
 
@@ -1066,11 +1133,12 @@ export function AdminPanel() {
               {activeTab === 'posts' && 'Create, edit, and manage blog posts.'}
               {activeTab === 'comments' && 'Moderate user comments across posts.'}
               {activeTab === 'products' && 'Manage shop items, books, and templates.'}
+              {activeTab === 'settings' && 'Configure global site preferences and maintenance modes.'}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            {activeTab !== 'comments' && (
+            {activeTab !== 'comments' && activeTab !== 'settings' && (
               <Button 
                 onClick={() => {
                   setIsCreatingMode(true);
@@ -1438,6 +1506,87 @@ export function AdminPanel() {
                   <p className="font-mono text-gb-fg-dark italic text-center py-8 border-2 border-dashed border-gb-bg-soft rounded-lg">No products found.</p>
                 )}
               </div>
+            )}
+
+            {/* SETTINGS PANEL */}
+            {activeTab === 'settings' && (
+              <Card className="border-2 border-gb-bg-soft/60 p-6 font-mono space-y-8">
+                <div>
+                  <h3 className="text-xl font-bold text-gb-fg mb-2">Global Preferences</h3>
+                  <p className="text-sm text-gb-fg-dark">Configure site settings and features.</p>
+                </div>
+                
+                <div className="border-t border-gb-bg-soft/50 pt-6 space-y-6">
+                  {[
+                    {
+                      key: 'site_maintenance' as const,
+                      label: 'Site-wide Maintenance Mode',
+                      desc: 'Restricts public access to the entire website, displaying an "Under Maintenance" notice. Admins can still bypass and access all pages.',
+                      activeLabel: 'Under Maintenance',
+                      inactiveLabel: 'Published',
+                    },
+                    {
+                      key: 'blog_maintenance' as const,
+                      label: 'Blog Maintenance Mode',
+                      desc: 'Restricts public access to the blog posts feed and individual post pages, displaying an "Under Maintenance" notice.',
+                      activeLabel: 'Under Maintenance',
+                      inactiveLabel: 'Published',
+                    },
+                    {
+                      key: 'comments_maintenance' as const,
+                      label: 'Comments Maintenance Mode',
+                      desc: 'Disables posting new comments while keeping existing comments readable.',
+                      activeLabel: 'Disabled',
+                      inactiveLabel: 'Enabled',
+                    },
+                    {
+                      key: 'store_maintenance' as const,
+                      label: 'Store Maintenance Mode',
+                      desc: 'Restricts public access to the store page, displaying an "Under Maintenance" notice. Admins can still preview products.',
+                      activeLabel: 'Under Maintenance',
+                      inactiveLabel: 'Published',
+                    },
+                  ].map(({ key, label, desc, activeLabel, inactiveLabel }, idx) => {
+                    const isChecked = !!settings[key];
+                    return (
+                      <div key={key} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${idx > 0 ? 'border-t border-gb-bg-soft/30 pt-6' : ''}`}>
+                        <div className="space-y-1 max-w-xl">
+                          <h4 className="text-base font-bold text-gb-fg">{label}</h4>
+                          <p className="text-xs text-gb-fg-dark">{desc}</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-3">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded border transition-all duration-300 ${
+                            isChecked 
+                              ? 'bg-gb-red/10 text-gb-red-light border-gb-red-light/20' 
+                              : 'bg-gb-green/10 text-gb-green-light border-gb-green-light/20'
+                          }`}>
+                            {isChecked ? activeLabel : inactiveLabel}
+                          </span>
+                          
+                          {/* Retro switch button */}
+                          <button
+                            onClick={() => handleToggleSetting(key, !isChecked)}
+                            disabled={savingSettings}
+                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gb-orange-light focus:ring-offset-2 focus:ring-offset-gb-bg ${
+                              isChecked ? 'bg-gb-red-light' : 'bg-gb-bg-light'
+                            } ${savingSettings ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            role="switch"
+                            aria-checked={isChecked}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-gb-bg shadow ring-0 transition duration-200 ease-in-out ${
+                                isChecked ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
             )}
           </>
         )}
