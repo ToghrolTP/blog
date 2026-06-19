@@ -5,7 +5,7 @@ import { SEO } from "./SEO";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
-import { ShoppingCart, Check, ArrowLeft, Loader2 } from "lucide-react";
+import { ShoppingCart, Check, ArrowLeft, Loader2, Wrench } from "lucide-react";
 import { Product } from "../types";
 
 function ImageZoom({ src, alt }: { src: string; alt: string }) {
@@ -38,23 +38,66 @@ export function ProductDetail() {
   const { language, t } = useLanguage();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isMaintenance, setIsMaintenance] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/products/${id}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Product not found");
-        return res.json();
-      })
-      .then((data) => {
-        setProduct(data);
-        setActiveImage(data.thumbnailUrl || (data.photos?.length > 0 ? data.photos[0] : null));
-        setLoading(false);
+    const adminSecret = localStorage.getItem('adminSecret');
+    const isParamAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isAdmin = !!adminSecret || isParamAdmin;
+
+    const headers: HeadersInit = {};
+    if (adminSecret) {
+      headers['Authorization'] = `Bearer ${adminSecret}`;
+    }
+
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((settings) => {
+        if (settings.store_maintenance && !isAdmin) {
+          setIsMaintenance(true);
+          setLoading(false);
+          return;
+        }
+
+        fetch(`/api/products/${id}`, { headers })
+          .then((res) => {
+            if (res.status === 503) {
+              setIsMaintenance(true);
+              return null;
+            }
+            if (!res.ok) throw new Error("Product not found");
+            return res.json();
+          })
+          .then((data) => {
+            if (data) {
+              setProduct(data);
+              setActiveImage(data.thumbnailUrl || (data.photos?.length > 0 ? data.photos[0] : null));
+            }
+            setLoading(false);
+          })
+          .catch((err) => {
+            console.error("Failed to fetch product:", err);
+            setLoading(false);
+          });
       })
       .catch((err) => {
-        console.error("Failed to fetch product:", err);
-        setLoading(false);
+        console.error("Failed to fetch settings:", err);
+        fetch(`/api/products/${id}`, { headers })
+          .then((res) => {
+            if (!res.ok) throw new Error("Product not found");
+            return res.json();
+          })
+          .then((data) => {
+            setProduct(data);
+            setActiveImage(data.thumbnailUrl || (data.photos?.length > 0 ? data.photos[0] : null));
+            setLoading(false);
+          })
+          .catch((prodErr) => {
+            console.error("Failed to fetch product fallback:", prodErr);
+            setLoading(false);
+          });
       });
   }, [id]);
 
@@ -62,6 +105,34 @@ export function ProductDetail() {
     return (
       <div className="text-center py-12 text-gb-fg-dark animate-pulse">
         Loading product...
+      </div>
+    );
+  }
+
+  if (isMaintenance) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center font-mono animate-in fade-in duration-500">
+        <div className="max-w-md w-full border-2 border-gb-red/50 bg-gb-bg-soft/10 p-8 rounded-lg shadow-[4px_4px_0_0_rgba(204,36,29,0.15)] relative overflow-hidden">
+          <div className="text-gb-red-light text-5xl mb-6 flex justify-center animate-pixel-float">
+            <Wrench size={48} />
+          </div>
+          
+          <h1 className="text-2xl font-bold text-gb-fg mb-4 border-b border-gb-bg-soft pb-4">
+            {t("store_maintenance_title")}
+          </h1>
+          
+          <p className="text-sm text-gb-fg-dark leading-relaxed mb-6">
+            {t("store_maintenance_desc")}
+          </p>
+          
+          <div className="flex justify-center">
+            <Link to={language === "fa" ? "/fa" : "/"}>
+              <Button variant="ghost" className="text-xs border border-gb-bg-soft hover:border-gb-orange-light text-gb-fg-dark hover:text-gb-orange-light font-mono flex items-center gap-2 cursor-pointer transition-all duration-200">
+                &larr; {language === "fa" ? "بازگشت به خانه" : "Back to Home"}
+              </Button>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }

@@ -5,6 +5,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { Button } from './ui/Button';
 import { Textarea } from './ui/Textarea';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface CommentsProps {
   postId: string;
@@ -13,13 +14,30 @@ interface CommentsProps {
 export function Comments({ postId }: CommentsProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const { user, login } = useAuth();
+  const { t } = useLanguage();
   const [newComment, setNewComment] = useState('');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCommentsMaintenance, setIsCommentsMaintenance] = useState(false);
 
   useEffect(() => {
     fetchComments();
   }, [postId]);
+
+  useEffect(() => {
+    const adminSecret = localStorage.getItem('adminSecret');
+    const isParamAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isAdmin = !!adminSecret || isParamAdmin;
+
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(settings => {
+        if ((settings.comments_maintenance || settings.site_maintenance) && !isAdmin) {
+          setIsCommentsMaintenance(true);
+        }
+      })
+      .catch(err => console.error("Error fetching settings in Comments:", err));
+  }, []);
 
   const fetchComments = async () => {
     try {
@@ -88,7 +106,13 @@ export function Comments({ postId }: CommentsProps) {
         )}
       </div>
 
-      {user ? (
+      {isCommentsMaintenance ? (
+        <div className="mb-8 p-4 bg-gb-red/5 border border-gb-red-light/20 rounded text-center font-mono">
+          <p className="text-gb-red-light text-sm">
+            {t("comments_maintenance_notice")}
+          </p>
+        </div>
+      ) : user ? (
         <form onSubmit={handleSubmit} className="mb-8">
           <div className="flex justify-between items-end mb-1">
             <span className="block font-mono text-sm text-gb-fg-dark">Leave a comment</span>
