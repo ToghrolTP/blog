@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { TerminalWindowIcon, GithubLogoIcon, TwitterLogoIcon, EnvelopeSimpleIcon } from './Icons';
 import { useAuth } from '../contexts/AuthContext';
@@ -7,6 +8,22 @@ import { useLanguage } from '../contexts/LanguageContext';
 export function Header() {
   const { user, login, logout } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
+  const [showStoreLink, setShowStoreLink] = useState(true);
+
+  useEffect(() => {
+    const adminSecret = localStorage.getItem('adminSecret');
+    const isParamAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isAdmin = !!adminSecret || isParamAdmin;
+
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if ((data.store_maintenance || data.site_maintenance) && !isAdmin) {
+          setShowStoreLink(false);
+        }
+      })
+      .catch((err) => console.error("Error fetching settings:", err));
+  }, []);
   
   return (
     <header className="border-b border-gb-bg-soft py-3 mt-2 md:py-6 md:mt-4">
@@ -34,14 +51,17 @@ export function Header() {
             </a>
           </div>
 
-          <div className="h-px w-full md:w-px md:h-6 bg-gb-bg-soft hidden md:block"></div>
-
-          <Link 
-            to={language === 'fa' ? '/fa/store' : '/store'}
-            className="text-sm font-mono font-bold text-gb-fg-dark hover:text-gb-orange-light transition-colors"
-          >
-            {t('store_nav')}
-          </Link>
+          {showStoreLink && (
+            <>
+              <div className="h-px w-full md:w-px md:h-6 bg-gb-bg-soft hidden md:block"></div>
+              <Link 
+                to={language === 'fa' ? '/fa/store' : '/store'}
+                className="text-sm font-mono font-bold text-gb-fg-dark hover:text-gb-orange-light transition-colors"
+              >
+                {t('store_nav')}
+              </Link>
+            </>
+          )}
 
           <div className="h-px w-full md:w-px md:h-6 bg-gb-bg-soft hidden md:block"></div>
 

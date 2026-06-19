@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Search, X, SlidersHorizontal } from 'lucide-react';
+import { Search, X, SlidersHorizontal, Wrench } from 'lucide-react';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { PostList } from './components/PostList';
@@ -26,6 +26,7 @@ function Home() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [isBlogMaintenance, setIsBlogMaintenance] = useState(false);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'upvotes'>('newest');
   const [readTimeFilter, setReadTimeFilter] = useState<'all' | 'short' | 'medium' | 'long'>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -44,10 +45,41 @@ function Home() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/posts')
+    const adminSecret = localStorage.getItem('adminSecret');
+    const isParamAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isAdmin = !!adminSecret || isParamAdmin;
+
+    const headers: HeadersInit = {};
+    if (adminSecret) {
+      headers['Authorization'] = `Bearer ${adminSecret}`;
+    }
+
+    fetch('/api/settings')
       .then(res => res.json())
-      .then(data => setPosts(data))
-      .catch(err => console.error("Failed to fetch posts:", err));
+      .then(settings => {
+        if (settings.blog_maintenance && !isAdmin) {
+          setIsBlogMaintenance(true);
+          return;
+        }
+
+        fetch('/api/posts', { headers })
+          .then(res => {
+            if (res.status === 503) {
+              setIsBlogMaintenance(true);
+              return [];
+            }
+            return res.json();
+          })
+          .then(data => setPosts(data))
+          .catch(err => console.error("Failed to fetch posts:", err));
+      })
+      .catch(err => {
+        console.error("Failed to fetch settings:", err);
+        fetch('/api/posts', { headers })
+          .then(res => res.json())
+          .then(data => setPosts(data))
+          .catch(postErr => console.error("Failed to fetch posts fallback:", postErr));
+      });
   }, []);
 
   useEffect(() => {
@@ -194,6 +226,32 @@ function Home() {
       }
     });
   };
+
+  if (isBlogMaintenance) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center font-mono animate-in fade-in duration-500">
+        <div className="max-w-md w-full border-2 border-gb-red/50 bg-gb-bg-soft/10 p-8 rounded-lg shadow-[4px_4px_0_0_rgba(204,36,29,0.15)] relative overflow-hidden">
+          <div className="text-gb-red-light text-5xl mb-6 flex justify-center animate-pixel-float">
+            <Wrench size={48} />
+          </div>
+          
+          <h1 className="text-2xl font-bold text-gb-fg mb-4 border-b border-gb-bg-soft pb-4">
+            {t("blog_maintenance_title")}
+          </h1>
+          
+          <p className="text-sm text-gb-fg-dark leading-relaxed mb-6">
+            {t("blog_maintenance_desc")}
+          </p>
+          
+          <div className="flex justify-center">
+            <Button variant="ghost" onClick={() => window.location.reload()} className="text-xs border border-gb-bg-soft hover:border-gb-orange-light text-gb-fg-dark hover:text-gb-orange-light font-mono flex items-center gap-2 cursor-pointer transition-all duration-200">
+              {language === "fa" ? "تلاش مجدد" : "Retry"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in duration-700">
@@ -452,12 +510,28 @@ function Home() {
 
 function AppContent() {
   const [isBooting, setIsBooting] = useState(true);
-  const { t } = useLanguage();
+  const [isSiteMaintenance, setIsSiteMaintenance] = useState(false);
+  const { t, language } = useLanguage();
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsBooting(false);
     }, 800);
+
+    const adminSecret = localStorage.getItem('adminSecret');
+    const isParamAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const isAdmin = !!adminSecret || isParamAdmin;
+    const isLoginPage = window.location.pathname === '/admin';
+
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.site_maintenance && !isAdmin && !isLoginPage) {
+          setIsSiteMaintenance(true);
+        }
+      })
+      .catch((err) => console.error("Error fetching settings:", err));
+
     return () => clearTimeout(timer);
   }, []);
 
@@ -466,6 +540,32 @@ function AppContent() {
       <div className="min-h-screen bg-gb-bg flex flex-col items-center justify-center p-6">
         <div className="text-5xl mb-4 animate-pulse flex justify-center"><TerminalWindowIcon /></div>
         <p className="text-gb-fg-dark font-mono animate-pulse">{t('mounting')}</p>
+      </div>
+    );
+  }
+
+  if (isSiteMaintenance) {
+    return (
+      <div className="min-h-screen bg-gb-bg text-gb-fg flex flex-col items-center justify-center p-6 text-center font-mono selection:bg-gb-bg-light selection:text-gb-orange-light">
+        <div className="max-w-md w-full border-2 border-gb-red/50 bg-gb-bg-soft/10 p-8 rounded-lg shadow-[4px_4px_0_0_rgba(204,36,29,0.15)] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-stripes bg-gb-red-light animate-pulse"></div>
+          
+          <div className="text-gb-red-light text-5xl mb-6 flex justify-center animate-pixel-float">
+            <Wrench size={48} />
+          </div>
+          
+          <h1 className="text-2xl font-bold text-gb-fg mb-4 border-b border-gb-bg-soft pb-4">
+            {t("site_maintenance_title")}
+          </h1>
+          
+          <p className="text-sm text-gb-fg-dark leading-relaxed mb-6">
+            {t("site_maintenance_desc")}
+          </p>
+
+          <p className="text-[10px] text-gb-fg-dark/50 uppercase tracking-widest animate-pulse mt-4">
+            System Offline
+          </p>
+        </div>
       </div>
     );
   }
