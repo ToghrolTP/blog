@@ -177,7 +177,7 @@ export function Store() {
 
   return (
     <div className="animate-in fade-in duration-700">
-      <SEO title={`${t("store_title")} | My Blog`} />
+      <SEO title={`${t("store_title")} | Log40`} />
 
       {/* Hero Section */}
       <div

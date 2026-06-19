@@ -442,13 +442,13 @@ async fn serve_seo_post(
             let current_url = format!("{}{}", base_url, uri.path());
             let thumb = post.thumbnail_url.unwrap_or_default();
             
-            html = html.replace("<title>My Blog</title>", "");
+            html = html.replace("<title>Log40</title>", "");
             html = html.replace("<title>Vite App</title>", "");
             html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
 
             
             let mut meta = format!(
-                r#"<title>{} | My Blog</title>
+                r#"<title>{} | Log40</title>
                 <meta name="description" content="{}" />
                 <link rel="canonical" href="{}" />
                 <meta property="og:title" content="{}" />
@@ -516,14 +516,14 @@ async fn serve_seo_product(
         ).bind(&id).fetch_all(&pool).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         
         if let Some(trans) = translations.iter().find(|t| t.language == target_lang) {
-            html = html.replace("<title>My Blog</title>", "");
+            html = html.replace("<title>Log40</title>", "");
             html = html.replace("<title>Vite App</title>", "");
             html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
             
             let thumb = product.thumbnail_url.clone().unwrap_or_default();
             
             let mut meta = format!(
-                r#"<title>{} | My Blog</title>
+                r#"<title>{} | Log40</title>
                 <meta name="description" content="{}" />
                 <link rel="canonical" href="{}" />
                 <meta property="og:title" content="{}" />
@@ -584,7 +584,7 @@ async fn serve_seo_store(
     let target_lang = if is_fa { "fa" } else { "en" };
     let dir = if is_fa { "rtl" } else { "ltr" };
     
-    html = html.replace("<title>My Blog</title>", "");
+    html = html.replace("<title>Log40</title>", "");
     html = html.replace("<title>Vite App</title>", "");
     html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
     
@@ -595,7 +595,7 @@ async fn serve_seo_store(
     };
     
     let meta = format!(
-        r#"<title>Store | My Blog</title>
+        r#"<title>Store | Log40</title>
         <meta name="description" content="{}" />"#,
         escape_html(&description)
     );

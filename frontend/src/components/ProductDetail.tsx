@@ -69,7 +69,7 @@ export function ProductDetail() {
   if (!product) {
     return (
       <div className="text-center py-12 text-gb-fg-dark">
-        <SEO title="Product Not Found | My Blog" />
+        <SEO title="Product Not Found | Log40" />
         Product not found.
       </div>
     );
@@ -82,7 +82,7 @@ export function ProductDetail() {
   return (
     <div className="animate-in fade-in duration-700 max-w-4xl mx-auto">
       <SEO 
-        title={`${translation.title} | My Blog`}
+        title={`${translation.title} | Log40`}
         description={translation.description}
         image={product.thumbnailUrl || undefined}
         type="product"

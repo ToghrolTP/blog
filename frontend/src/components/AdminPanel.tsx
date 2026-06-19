@@ -358,7 +358,7 @@ export function AdminPanel() {
   if (!isAuthenticated) {
     return (
       <div className="animate-in fade-in duration-500 max-w-md mx-auto mt-20">
-        <h2 className="text-2xl font-mono mb-6 text-gb-purple-light border-b-2 border-gb-purple-light pb-2 inline-block">root@blog:~# login</h2>
+        <h2 className="text-2xl font-mono mb-6 text-gb-purple-light border-b-2 border-gb-purple-light pb-2 inline-block">root@log40:~# login</h2>
         <Card>
           {error && <p className="text-gb-red-light font-mono text-sm mb-4 bg-gb-red-light/10 p-2 rounded border border-gb-red-light/30">{error}</p>}
           <form onSubmit={handleLogin} className="space-y-6">

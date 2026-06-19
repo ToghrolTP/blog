@@ -68,7 +68,7 @@ export function PostDetail() {
   return (
     <article className="animate-in fade-in slide-in-from-bottom-4 duration-500">
       <SEO 
-        title={`${currentTranslation.title} | My Blog`}
+        title={`${currentTranslation.title} | Log40`}
         description={excerpt}
         image={post.thumbnailUrl}
         type="article"

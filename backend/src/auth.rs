@@ -73,7 +73,7 @@ pub async fn github_callback(
     let user_res = req_client
         .get("https://api.github.com/user")
         .header("Authorization", format!("Bearer {}", access_token))
-        .header("User-Agent", "blog-app")
+        .header("User-Agent", "log40-app")
         .send()
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;

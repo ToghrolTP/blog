@@ -15,7 +15,7 @@ export function Header() {
           <div className="text-2xl md:text-3xl grayscale group-hover:grayscale-0 transition-all"><TerminalWindowIcon /></div>
           <div>
             <h1 className="text-xl md:text-2xl font-bold font-mono tracking-tight text-gb-fg flex items-center">
-              admin<span className="text-gb-red-light">@</span>system<span className="text-gb-fg-dark animate-pulse">_</span>
+              admin<span className="text-gb-red-light">@</span>log40<span className="text-gb-fg-dark animate-pulse">_</span>
             </h1>
             <p className="text-[10px] md:text-xs font-mono text-gb-fg-dark mt-0.5 md:mt-1">{t('subtitle')}</p>
           </div>
