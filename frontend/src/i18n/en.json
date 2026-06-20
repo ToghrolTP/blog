@@ -79,5 +79,18 @@
   "feedback_cancel": "Cancel",
   "feedback_submitting": "Sending...",
   "feedback_success": "Thank you for your feedback!",
-  "feedback_error": "Failed to submit feedback."
+  "feedback_error": "Failed to submit feedback.",
+  "login_modal_title": "Welcome to Log40",
+  "email_label": "Email Address",
+  "password_label": "Password",
+  "password_show": "Show",
+  "password_hide": "Hide",
+  "login_submit": "Log In",
+  "signup_submit": "Sign Up",
+  "continue_with_github": "Continue with GitHub",
+  "email_exists_notice": "Welcome back! Enter your password to log in.",
+  "email_new_notice": "No account found with this email. We will create a new one for you.",
+  "email_checking": "Checking email...",
+  "login_error_invalid": "Invalid password. Please try again.",
+  "login_error_failed": "Authentication failed. Please try again."
 }

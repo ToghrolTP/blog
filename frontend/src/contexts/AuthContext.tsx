@@ -1,11 +1,14 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types';
+import { LoginModal } from '../components/LoginModal';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: () => void;
   logout: () => Promise<void>;
+  loginWithGithub: () => void;
+  loginWithPassword: (email: string, password: string) => Promise<boolean>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -13,6 +16,7 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchUser = async () => {
     try {
@@ -35,19 +39,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = () => {
+    setIsModalOpen(true);
+  };
+
+  const loginWithGithub = () => {
     window.location.href = '/api/auth/github';
+  };
+
+  const loginWithPassword = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/auth/manual', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+      if (res.ok) {
+        setUser(await res.json());
+        window.dispatchEvent(new Event('auth-change'));
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
   };
 
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
-    // Optionally trigger a custom event so other contexts (like UpvoteContext) can refresh
     window.dispatchEvent(new Event('auth-change'));
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, loginWithGithub, loginWithPassword }}>
       {children}
+      <LoginModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </AuthContext.Provider>
   );
 }
