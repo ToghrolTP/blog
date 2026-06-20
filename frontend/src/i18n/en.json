@@ -93,5 +93,6 @@
   "email_checking": "Checking email...",
   "login_error_invalid": "Invalid password. Please try again.",
   "login_error_failed": "Authentication failed. Please try again.",
-  "auth_submit": "Sign In/Login"
+  "auth_submit": "Sign In/Login",
+  "username_label_optional": "Username (Optional)"
 }

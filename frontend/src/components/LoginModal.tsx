@@ -17,6 +17,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [username, setUsername] = useState("");
   const [emailExists, setEmailExists] = useState<boolean | null>(null);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -30,6 +31,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
       setEmail("");
       setPassword("");
       setShowPassword(false);
+      setUsername("");
       setEmailExists(null);
       setIsCheckingEmail(false);
       setErrorMessage("");
@@ -83,7 +85,11 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
     setErrorMessage("");
 
     try {
-      const success = await loginWithPassword(email.trim(), password);
+      const success = await loginWithPassword(
+        email.trim(),
+        password,
+        emailExists === false ? username.trim() || undefined : undefined,
+      );
       if (success) {
         onClose();
       } else {
@@ -101,6 +107,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
   };
 
   const isRtl = language === "fa";
+  const suggestedUsername = email.includes("@") ? email.split("@")[0] : "";
 
   return (
     <div className="fixed inset-0 bg-[#000000]/30 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
@@ -177,6 +184,27 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
               </button>
             </div>
           </div>
+
+          {/* Username field (shown dynamically for registrations) */}
+          {emailExists === false && (
+            <div className="space-y-2 animate-in slide-in-from-top-2 fade-in duration-200">
+              <label
+                htmlFor="auth-username"
+                className="text-xs text-gb-fg-dark/80 font-bold block"
+              >
+                {t("username_label_optional") || "Username (Optional)"}
+              </label>
+              <Input
+                id="auth-username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder={suggestedUsername}
+                className="w-full font-mono text-sm"
+                disabled={isSubmitting}
+              />
+            </div>
+          )}
 
           {/* Dynamic Helper Notice */}
           <div className="min-h-10 flex items-center justify-center text-center">
