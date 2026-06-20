@@ -390,3 +390,127 @@ pub async fn update_setting(
         
     Ok(StatusCode::OK)
 }
+
+#[derive(serde::Deserialize)]
+pub struct SubmitFeedbackRequest {
+    pub route: String,
+    pub content: String,
+}
+
+#[derive(serde::Serialize, sqlx::FromRow)]
+pub struct FeedbackDb {
+    pub id: i64,
+    pub route: String,
+    pub content: String,
+    pub user_id: Option<i64>,
+    pub created_at: String,
+}
+
+#[derive(serde::Serialize)]
+pub struct FeedbackResponse {
+    pub id: i64,
+    pub route: String,
+    pub content: String,
+    pub created_at: String,
+    pub user: Option<crate::models::User>,
+}
+
+pub async fn submit_feedback(
+    State(pool): State<SqlitePool>,
+    jar: axum_extra::extract::cookie::CookieJar,
+    Json(payload): Json<SubmitFeedbackRequest>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    // Check if feedback is enabled
+    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = 'feedback_enabled'")
+        .fetch_optional(&pool)
+        .await
+        .unwrap_or(None);
+    let enabled = row.map(|r| r.0 == "true").unwrap_or(false);
+    if !enabled {
+        return Err((StatusCode::SERVICE_UNAVAILABLE, "Feedback is disabled".to_string()));
+    }
+
+    // Check allowed paths
+    let paths_row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = 'feedback_allowed_paths'")
+        .fetch_optional(&pool)
+        .await
+        .unwrap_or(None);
+    let allowed_paths = paths_row.map(|r| r.0).unwrap_or_else(|| "*".to_string());
+    if allowed_paths != "*" && !allowed_paths.trim().is_empty() {
+        let is_allowed = allowed_paths.split(',')
+            .map(|s| s.trim())
+            .any(|prefix| payload.route.starts_with(prefix));
+        if !is_allowed {
+            return Err((StatusCode::BAD_REQUEST, "Feedback not allowed on this route".to_string()));
+        }
+    }
+
+    if payload.content.trim().is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Feedback content cannot be empty".to_string()));
+    }
+
+    let user_id = crate::auth::get_user_from_jar(&jar);
+
+    sqlx::query("INSERT INTO feedbacks (route, content, user_id) VALUES (?, ?, ?)")
+        .bind(&payload.route)
+        .bind(&payload.content)
+        .bind(user_id)
+        .execute(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+
+    Ok(StatusCode::OK)
+}
+
+pub async fn get_feedbacks(
+    headers: axum::http::HeaderMap,
+    State(pool): State<SqlitePool>,
+) -> Result<Json<Vec<FeedbackResponse>>, (StatusCode, String)> {
+    check_auth(&headers)?;
+
+    let rows = sqlx::query_as::<_, FeedbackDb>(
+        "SELECT id, route, content, user_id, created_at FROM feedbacks ORDER BY created_at DESC"
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+
+    let mut response = Vec::new();
+    for row in rows {
+        let user = if let Some(uid) = row.user_id {
+            sqlx::query_as::<_, crate::models::User>("SELECT id, username, avatar_url FROM users WHERE id = ?")
+                .bind(uid)
+                .fetch_optional(&pool)
+                .await
+                .unwrap_or(None)
+        } else {
+            None
+        };
+
+        response.push(FeedbackResponse {
+            id: row.id,
+            route: row.route,
+            content: row.content,
+            created_at: row.created_at,
+            user,
+        });
+    }
+
+    Ok(Json(response))
+}
+
+pub async fn delete_feedback(
+    headers: axum::http::HeaderMap,
+    State(pool): State<SqlitePool>,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    check_auth(&headers)?;
+
+    sqlx::query("DELETE FROM feedbacks WHERE id = ?")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+
+    Ok(StatusCode::OK)
+}

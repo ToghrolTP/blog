@@ -87,6 +87,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/comments/{id}/upvote", post(upvotes::toggle_comment_upvote))
         .route("/api/upload", post(upload::upload_image))
         .route("/api/settings", get(handlers::get_settings).put(handlers::update_setting))
+        .route("/api/feedbacks", post(handlers::submit_feedback))
+        .route("/api/admin/feedbacks", get(handlers::get_feedbacks))
+        .route("/api/admin/feedbacks/{id}", delete(handlers::delete_feedback))
         .route("/api/products", get(products::get_products).post(products::create_product))
         .route("/api/products/{id}", get(products::get_product).put(products::update_product).delete(products::delete_product))
         .route("/store/product/{id}", get(serve_seo_product))
@@ -271,7 +274,9 @@ async fn init_db(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>> {
         ('store_maintenance', 'false'),
         ('blog_maintenance', 'false'),
         ('comments_maintenance', 'false'),
-        ('site_maintenance', 'false')
+        ('site_maintenance', 'false'),
+        ('feedback_enabled', 'true'),
+        ('feedback_allowed_paths', '*')
         "#
     )
     .execute(pool)
@@ -289,6 +294,21 @@ async fn init_db(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>> {
             FOREIGN KEY (post_id) REFERENCES posts(id),
             FOREIGN KEY (user_id) REFERENCES users(id),
             FOREIGN KEY (parent_id) REFERENCES comments(id)
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS feedbacks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            route TEXT NOT NULL,
+            content TEXT NOT NULL,
+            user_id INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
         )
         "#
     )
