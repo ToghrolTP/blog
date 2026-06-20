@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect},
     Json,
@@ -193,10 +193,51 @@ pub async fn check_email(
     Ok(Json(CheckEmailResponse { exists: row.is_some() }))
 }
 
+pub async fn get_avatar(
+    Path(username): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    use dicebear_core::{Avatar, Style};
+    use serde_json::json;
+
+    let style = Style::from_str(dicebear_styles::GLYPHS)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to parse style: {}", e)))?;
+
+    let avatar = Avatar::new(&style, json!({
+      "glyphColor": [
+        "928374",
+        "3c3836",
+        "fb4934",
+        "cc241d",
+        "d65d0e",
+        "fe8019",
+        "d79921",
+        "fabd2f",
+        "98971a",
+        "b8bb26",
+        "689d6a",
+        "8ec07c",
+        "458588",
+        "83a598",
+        "b16286",
+        "d3869b"
+      ],
+      "glyphColorAngle": 143,
+      "seed": username
+    })).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to create avatar: {}", e)))?;
+
+    let svg = avatar.to_svg().to_string();
+
+    Ok((
+        [("content-type", "image/svg+xml")],
+        svg,
+    ))
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ManualAuthRequest {
     pub email: String,
     pub password: String,
+    pub username: Option<String>,
 }
 
 pub async fn manual_auth(
@@ -240,8 +281,9 @@ pub async fn manual_auth(
         final_user = user;
     } else {
         // User does not exist: register new user
-        let username = email_clean.split('@').next().unwrap_or("user").to_string();
-        let avatar_url = "/chatgpt-linux-pixel-art.png".to_string();
+        let username = payload.username.filter(|u| !u.trim().is_empty())
+            .unwrap_or_else(|| email_clean.split('@').next().unwrap_or("user").to_string());
+        let avatar_url = format!("/api/avatar/{}", username);
 
         let hashed = bcrypt::hash(&payload.password, bcrypt::DEFAULT_COST)
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;

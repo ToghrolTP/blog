@@ -84,6 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/auth/logout", post(auth::logout))
         .route("/api/auth/check-email", get(auth::check_email))
         .route("/api/auth/manual", post(auth::manual_auth))
+        .route("/api/avatar/{username}", get(auth::get_avatar))
         .route("/api/user/upvotes", get(upvotes::get_user_upvotes))
         .route("/api/posts/{id}/upvote", post(upvotes::toggle_post_upvote))
         .route("/api/comments/{id}/upvote", post(upvotes::toggle_comment_upvote))

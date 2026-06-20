@@ -20,3 +20,5 @@ time = "0.3"
 uuid = { version = "1.23.2", features = ["v4"] }
 tokio-util = { version = "0.7.18", features = ["io"] }
 bcrypt = "0.15"
+dicebear-core = "10.3.0"
+dicebear-styles = { version = "10.2.0", features = ["glyphs"] }
