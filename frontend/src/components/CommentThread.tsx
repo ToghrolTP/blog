@@ -4,7 +4,7 @@ import { MarkdownRenderer } from './MarkdownRenderer';
 import { Button } from './ui/Button';
 import { Textarea } from './ui/Textarea';
 import { useUpvotes } from '../contexts/UpvoteContext';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUpIcon } from './Icons';
 
 interface CommentThreadProps {
   comment: Comment;
@@ -88,7 +88,7 @@ export function CommentThread({ comment, postId, user, onReply }: CommentThreadP
                 }`}
                 onClick={handleUpvote}
               >
-                <ArrowUp size={14} />
+                <ArrowUpIcon size={14} />
                 <span>{displayUpvotes}</span>
               </button>
               <button 
@@ -101,7 +101,7 @@ export function CommentThread({ comment, postId, user, onReply }: CommentThreadP
           )}
           {!user && displayUpvotes > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-gb-fg-dark font-mono">
-              <ArrowUp size={14} />
+              <ArrowUpIcon size={14} />
               <span>{displayUpvotes}</span>
             </div>
           )}

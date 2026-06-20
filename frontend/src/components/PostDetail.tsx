@@ -7,7 +7,7 @@ import { Badge } from './ui/Badge';
 import { Comments } from './Comments';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { useUpvotes } from '../contexts/UpvoteContext';
-import { ArrowUp, Bot, Wrench } from 'lucide-react';
+import { ArrowUpIcon, BotIcon, WrenchIcon } from './Icons';
 import { useLanguage } from '../contexts/LanguageContext';
 import { SEO } from './SEO';
 
@@ -19,6 +19,7 @@ export function PostDetail() {
   const [isBlogMaintenance, setIsBlogMaintenance] = useState(false);
   const { upvotes: userUpvotes, togglePostUpvote } = useUpvotes();
   const { language, t } = useLanguage();
+  const hasUpvoted = post ? userUpvotes.posts.includes(post.id) : false;
 
   const handleUpvote = async () => {
     if (!post) return;
@@ -88,7 +89,7 @@ export function PostDetail() {
       <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center font-mono animate-in fade-in duration-500">
         <div className="max-w-md w-full border-2 border-gb-red/50 bg-gb-bg-soft/10 p-8 rounded-lg shadow-[4px_4px_0_0_rgba(204,36,29,0.15)] relative overflow-hidden">
           <div className="text-gb-red-light text-5xl mb-6 flex justify-center animate-pixel-float">
-            <Wrench size={48} />
+            <WrenchIcon size={48} />
           </div>
           
           <h1 className="text-2xl font-bold text-gb-fg mb-4 border-b border-gb-bg-soft pb-4">
@@ -185,20 +186,20 @@ export function PostDetail() {
             <span>{currentTranslation.readTime} {t('min_read')}</span>
           </div>
           {currentTranslation.isMachineTranslated && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-gb-purple-light/20 text-gb-purple-light text-xs font-mono" title="Machine Translated">
-              <Bot size={14} />
-              <span>Auto</span>
-            </div>
+            <span className="text-[10px] px-2 py-0.5 bg-gb-purple-light/10 text-gb-purple-light border border-gb-purple-light/20 rounded-sm font-mono flex items-center gap-1">
+              <BotIcon size={14} />
+              Machine Translated
+            </span>
           )}
           <div 
-            className={`flex items-center gap-1.5 px-2 py-0.5 rounded cursor-pointer transition-colors ${
-              userUpvotes.posts.includes(post.id) 
-                ? 'bg-gb-orange-light/20 text-gb-orange-light hover:bg-gb-orange-light/30' 
-                : 'hover:bg-gb-bg-soft text-gb-fg-dark'
+            className={`flex items-center gap-1.5 px-3 py-1.5 border-2 rounded transition-all duration-300 font-mono text-xs cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-gb-orange-light focus:ring-offset-2 focus:ring-offset-gb-bg ${
+              hasUpvoted
+                ? 'bg-gb-orange-light text-gb-bg border-gb-orange-light shadow-[0_0_10px_rgba(254,128,25,0.25)] font-bold'
+                : 'bg-gb-bg-soft/10 text-gb-fg border-gb-bg-soft/60 hover:border-gb-orange-light/40 hover:bg-gb-bg-soft/20'
             }`}
             onClick={handleUpvote}
           >
-            <ArrowUp size={16} />
+            <ArrowUpIcon size={16} />
             <span>{post.upvotes}</span>
           </div>
           <div className="flex items-center gap-2">

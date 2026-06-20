@@ -1,10 +1,9 @@
 import { Post } from '../types';
-import { CalendarBlankIcon, ClockIcon, ArrowRightIcon } from './Icons';
+import { CalendarBlankIcon, ClockIcon, ArrowRightIcon, ArrowUpIcon, BotIcon } from './Icons';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { useNavigate } from 'react-router-dom';
 import { useUpvotes } from '../contexts/UpvoteContext';
-import { ArrowUp, Bot } from 'lucide-react';
 import { useState, ReactNode } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -53,7 +52,7 @@ export function PostList({ posts }: PostListProps) {
             </div>
             {currentTranslation.isMachineTranslated && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-gb-purple-light/20 text-gb-purple-light text-xs font-mono" title="Machine Translated">
-                <Bot size={14} />
+                <BotIcon size={14} />
                 <span>Auto</span>
               </div>
             )}
@@ -65,7 +64,7 @@ export function PostList({ posts }: PostListProps) {
               }`}
               onClick={(e) => handleUpvote(e, post.id)}
             >
-              <ArrowUp size={16} />
+              <ArrowUpIcon size={16} />
               <span>{displayUpvotes}</span>
             </div>
           </div>

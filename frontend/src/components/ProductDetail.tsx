@@ -5,7 +5,7 @@ import { SEO } from "./SEO";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
-import { ShoppingCart, Check, ArrowLeft, Loader2, Wrench } from "lucide-react";
+import { ShoppingCartIcon, CheckIcon, ArrowLeftIcon, LoaderIcon, WrenchIcon } from "./Icons";
 import { Product } from "../types";
 
 function ImageZoom({ src, alt }: { src: string; alt: string }) {
@@ -114,7 +114,7 @@ export function ProductDetail() {
       <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center font-mono animate-in fade-in duration-500">
         <div className="max-w-md w-full border-2 border-gb-red/50 bg-gb-bg-soft/10 p-8 rounded-lg shadow-[4px_4px_0_0_rgba(204,36,29,0.15)] relative overflow-hidden">
           <div className="text-gb-red-light text-5xl mb-6 flex justify-center animate-pixel-float">
-            <Wrench size={48} />
+            <WrenchIcon size={48} />
           </div>
           
           <h1 className="text-2xl font-bold text-gb-fg mb-4 border-b border-gb-bg-soft pb-4">
@@ -167,7 +167,7 @@ export function ProductDetail() {
         to={language === "fa" ? "/fa/store" : "/store"}
         className="inline-flex items-center gap-2 text-gb-fg-dark hover:text-gb-fg transition-colors mb-8 font-mono text-sm"
       >
-        <ArrowLeft className="w-4 h-4" /> {t("back_to_store")}
+        <ArrowLeftIcon className="w-4 h-4" /> {t("back_to_store")}
       </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -230,7 +230,7 @@ export function ProductDetail() {
                     <div className="space-y-3">
                       {translation.features.map((feature, idx) => (
                         <div key={idx} className="flex items-center gap-3">
-                          <Check className="w-5 h-5 text-gb-aqua-light shrink-0" />
+                          <CheckIcon className="w-5 h-5 text-gb-aqua-light shrink-0" />
                           <span className="text-gb-fg">{feature}</span>
                         </div>
                       ))}
@@ -263,9 +263,9 @@ export function ProductDetail() {
             }}
           >
             {isPurchasing ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
+              <LoaderIcon className="w-6 h-6 animate-spin" />
             ) : (
-              <ShoppingCart className="w-6 h-6" />
+              <ShoppingCartIcon className="w-6 h-6" />
             )}
             {isPurchasing ? t("mounting") : t("purchase_now")}
           </Button>
