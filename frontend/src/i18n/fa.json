@@ -71,5 +71,13 @@
   "blog_maintenance_mode": "حالت تعمیر وبلاگ",
   "blog_maintenance_toggle_desc": "تغییر حالت تعمیر و نگهداری وبلاگ برای محدود کردن دسترسی به پست‌ها و خوراک وبلاگ.",
   "comments_maintenance_mode": "حالت تعمیر نظرات",
-  "comments_maintenance_toggle_desc": "تغییر حالت تعمیر و نگهداری نظرات برای غیرفعال کردن ارسال نظرات جدید در عین حفظ امکان خواندن نظرات."
+  "comments_maintenance_toggle_desc": "تغییر حالت تعمیر و نگهداری نظرات برای غیرفعال کردن ارسال نظرات جدید در عین حفظ امکان خواندن نظرات.",
+  "feedback_button_tooltip": "گزارش خطا یا بازخورد",
+  "feedback_modal_title": "گزارش خطا / بازخورد",
+  "feedback_textarea_placeholder": "توضیحات خطا یا بازخورد خود را اینجا بنویسید...",
+  "feedback_submit": "ارسال",
+  "feedback_cancel": "لغو",
+  "feedback_submitting": "در حال ارسال...",
+  "feedback_success": "از بازخورد شما سپاسگزاریم!",
+  "feedback_error": "خطا در ارسال بازخورد."
 }

@@ -71,5 +71,13 @@
   "blog_maintenance_mode": "Blog Maintenance Mode",
   "blog_maintenance_toggle_desc": "Toggle maintenance mode to restrict public access to the blog posts feed and pages.",
   "comments_maintenance_mode": "Comments Maintenance Mode",
-  "comments_maintenance_toggle_desc": "Toggle maintenance mode to disable posting new comments while keeping reading available."
+  "comments_maintenance_toggle_desc": "Toggle maintenance mode to disable posting new comments while keeping reading available.",
+  "feedback_button_tooltip": "Report a bug or give feedback",
+  "feedback_modal_title": "Report Bug / Feedback",
+  "feedback_textarea_placeholder": "Describe the issue or suggestion here...",
+  "feedback_submit": "Submit",
+  "feedback_cancel": "Cancel",
+  "feedback_submitting": "Sending...",
+  "feedback_success": "Thank you for your feedback!",
+  "feedback_error": "Failed to submit feedback."
 }
