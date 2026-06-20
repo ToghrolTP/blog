@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Search, X, SlidersHorizontal, Wrench } from 'lucide-react';
+import { SearchIcon, XIcon, SlidersHorizontalIcon, WrenchIcon } from './components/Icons';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { PostList } from './components/PostList';
@@ -18,6 +18,7 @@ import { SEO } from './components/SEO';
 import { Button } from './components/ui/Button';
 import { CategoryButton } from './components/ui/CategoryButton';
 import { Pagination } from './components/ui/Pagination';
+import { FeedbackButton } from './components/FeedbackButton';
 
 function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -115,6 +116,14 @@ function Home() {
   }, []);
 
   const languagePosts = posts.filter(p => p.translations?.some(t => t.language === language));
+
+  const getCategoryCountText = (type: string) => {
+    const count = languagePosts.filter((p) => p.type === type).length;
+    if (language === 'fa') {
+      return `${new Intl.NumberFormat('fa-IR').format(count)} مطلب`;
+    }
+    return `${count} ${count === 1 ? 'post' : 'posts'}`;
+  };
 
   const filteredByTypePosts = selectedType 
     ? languagePosts.filter(post => post.type === selectedType)
@@ -224,6 +233,11 @@ function Home() {
           setSelectedTag(null);
         }
       }
+      if (nextType) {
+        setTimeout(() => {
+          filterRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
     });
   };
 
@@ -232,7 +246,7 @@ function Home() {
       <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center font-mono animate-in fade-in duration-500">
         <div className="max-w-md w-full border-2 border-gb-red/50 bg-gb-bg-soft/10 p-8 rounded-lg shadow-[4px_4px_0_0_rgba(204,36,29,0.15)] relative overflow-hidden">
           <div className="text-gb-red-light text-5xl mb-6 flex justify-center animate-pixel-float">
-            <Wrench size={48} />
+            <WrenchIcon size={48} />
           </div>
           
           <h1 className="text-2xl font-bold text-gb-fg mb-4 border-b border-gb-bg-soft pb-4">
@@ -265,6 +279,8 @@ function Home() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
         <CategoryButton
           active={selectedType === 'linux'}
+          dimmed={selectedType !== null && selectedType !== 'linux'}
+          postCountText={getCategoryCountText('linux')}
           onClick={() => handleTypeToggle('linux')}
           imgSrc="/chatgpt-linux-pixel-art.png"
           imgAlt={t('linux_cat')}
@@ -272,6 +288,8 @@ function Home() {
         />
         <CategoryButton
           active={selectedType === 'cybersecurity'}
+          dimmed={selectedType !== null && selectedType !== 'cybersecurity'}
+          postCountText={getCategoryCountText('cybersecurity')}
           onClick={() => handleTypeToggle('cybersecurity')}
           imgSrc="/cybersecurity-guy.png"
           imgAlt={t('cybersecurity_cat')}
@@ -279,6 +297,8 @@ function Home() {
         />
         <CategoryButton
           active={selectedType === 'backend'}
+          dimmed={selectedType !== null && selectedType !== 'backend'}
+          postCountText={getCategoryCountText('backend')}
           onClick={() => handleTypeToggle('backend')}
           imgSrc="/backend_gear_icon_gruvbox_transparent.png"
           imgAlt={t('backend_cat')}
@@ -286,6 +306,8 @@ function Home() {
         />
         <CategoryButton
           active={selectedType === 'devops'}
+          dimmed={selectedType !== null && selectedType !== 'devops'}
+          postCountText={getCategoryCountText('devops')}
           onClick={() => handleTypeToggle('devops')}
           imgSrc="/devops_icon_gruvbox.png"
           imgAlt={t('devops_cat')}
@@ -293,6 +315,8 @@ function Home() {
         />
         <CategoryButton
           active={selectedType === 'terminal'}
+          dimmed={selectedType !== null && selectedType !== 'terminal'}
+          postCountText={getCategoryCountText('terminal')}
           onClick={() => handleTypeToggle('terminal')}
           imgSrc="/terminal_personal_computer_icon_gruvbox.png"
           imgAlt={t('terminal_cat')}
@@ -300,6 +324,8 @@ function Home() {
         />
         <CategoryButton
           active={selectedType === 'academic'}
+          dimmed={selectedType !== null && selectedType !== 'academic'}
+          postCountText={getCategoryCountText('academic')}
           onClick={() => handleTypeToggle('academic')}
           imgSrc="/article_icon_gruvbox.png"
           imgAlt={t('academic_cat')}
@@ -311,7 +337,7 @@ function Home() {
       <div className="mb-12 flex items-center gap-3 max-w-xl relative" ref={filterRef}>
         <div className="relative flex-1 flex items-center">
           <span className="absolute start-3 text-gb-fg-dark/60">
-            <Search size={18} />
+            <SearchIcon size={18} />
           </span>
           <input
             ref={searchInputRef}
@@ -332,7 +358,7 @@ function Home() {
                 className="text-gb-fg-dark hover:text-gb-red-light transition-colors cursor-pointer"
                 title="Clear search"
               >
-                <X size={18} />
+                <XIcon size={18} />
               </button>
             ) : (
               <kbd className="border border-gb-fg-dark/30 text-gb-fg-dark/50 px-1.5 py-0.5 rounded text-[10px] bg-gb-bg-soft/40 font-mono select-none">
@@ -353,7 +379,7 @@ function Home() {
             }`}
             title="Filter posts"
           >
-            <SlidersHorizontal size={18} />
+            <SlidersHorizontalIcon size={18} />
             <span className="hidden sm:inline">{t('filters')}</span>
             {(sortBy !== 'newest' || readTimeFilter !== 'all') && (
               <span className="w-2.5 h-2.5 rounded-full bg-current border border-gb-bg-soft" />
@@ -551,7 +577,7 @@ function AppContent() {
           <div className="absolute top-0 left-0 w-full h-1 bg-stripes bg-gb-red-light animate-pulse"></div>
           
           <div className="text-gb-red-light text-5xl mb-6 flex justify-center animate-pixel-float">
-            <Wrench size={48} />
+            <WrenchIcon size={48} />
           </div>
           
           <h1 className="text-2xl font-bold text-gb-fg mb-4 border-b border-gb-bg-soft pb-4">
@@ -592,6 +618,7 @@ function AppContent() {
               </main>
               
               <Footer />
+              <FeedbackButton />
             </div>
           </div>
       </UpvoteProvider>

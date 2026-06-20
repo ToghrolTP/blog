@@ -5,7 +5,7 @@ import { SEO } from "./SEO";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
-import { ShoppingCart, Check, Search, X, SlidersHorizontal, Wrench } from "lucide-react";
+import { ShoppingCartIcon, CheckIcon, SearchIcon, XIcon, SlidersHorizontalIcon, WrenchIcon } from "./Icons";
 import { Link } from "react-router-dom";
 import { Product } from "../types";
 import { CategoryButton } from "./ui/CategoryButton";
@@ -24,6 +24,14 @@ export function Store() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const getCategoryCountText = (type: string) => {
+    const count = products.filter((p) => p.type === type).length;
+    if (language === 'fa') {
+      return `${new Intl.NumberFormat('fa-IR').format(count)} محصول`;
+    }
+    return `${count} ${count === 1 ? 'product' : 'products'}`;
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -211,6 +219,11 @@ export function Store() {
           setSelectedTag(null);
         }
       }
+      if (nextType) {
+        setTimeout(() => {
+          filterRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
     });
   };
 
@@ -219,7 +232,7 @@ export function Store() {
       <div className="min-h-[50vh] flex flex-col items-center justify-center p-6 text-center font-mono animate-in fade-in duration-500">
         <div className="max-w-md w-full border-2 border-gb-red/50 bg-gb-bg-soft/10 p-8 rounded-lg shadow-[4px_4px_0_0_rgba(204,36,29,0.15)] relative overflow-hidden">
           <div className="text-gb-red-light text-5xl mb-6 flex justify-center animate-pixel-float">
-            <Wrench size={48} />
+            <WrenchIcon size={48} />
           </div>
           
           <h1 className="text-2xl font-bold text-gb-fg mb-4 border-b border-gb-bg-soft pb-4">
@@ -264,7 +277,7 @@ export function Store() {
       <div className="mb-12 flex items-center gap-3 max-w-xl relative" ref={filterRef}>
         <div className="relative flex-1 flex items-center">
           <span className="absolute start-3 text-gb-fg-dark/60">
-            <Search size={18} />
+            <SearchIcon size={18} />
           </span>
           <input
             ref={searchInputRef}
@@ -285,7 +298,7 @@ export function Store() {
                 className="text-gb-fg-dark hover:text-gb-red-light transition-colors cursor-pointer"
                 title="Clear search"
               >
-                <X size={18} />
+                <XIcon size={18} />
               </button>
             ) : (
               <kbd className="border border-gb-fg-dark/30 text-gb-fg-dark/50 px-1.5 py-0.5 rounded text-[10px] bg-gb-bg-soft/40 font-mono select-none">
@@ -306,7 +319,7 @@ export function Store() {
             }`}
             title="Filter products"
           >
-            <SlidersHorizontal size={18} />
+            <SlidersHorizontalIcon size={18} />
             <span className="hidden sm:inline">{t('filters')}</span>
             {(sortBy !== 'none' || formatFilter !== 'all') && (
               <span className="w-2.5 h-2.5 rounded-full bg-current border border-gb-bg-soft" />
@@ -387,6 +400,8 @@ export function Store() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
         <CategoryButton
           active={selectedType === 'book'}
+          dimmed={selectedType !== null && selectedType !== 'book'}
+          postCountText={getCategoryCountText('book')}
           onClick={() => handleTypeToggle('book')}
           disabled={loading}
           imgSrc="/book-pixel-art.svg"
@@ -396,6 +411,8 @@ export function Store() {
         />
         <CategoryButton
           active={selectedType === 'latex'}
+          dimmed={selectedType !== null && selectedType !== 'latex'}
+          postCountText={getCategoryCountText('latex')}
           onClick={() => handleTypeToggle('latex')}
           disabled={loading}
           imgSrc="/latex-pixel-art.svg"
@@ -515,7 +532,7 @@ export function Store() {
                               key={idx}
                               className="flex items-center gap-3 px-2 py-1.5 rounded text-sm text-gb-fg-dark group-hover/card:text-gb-fg/80 transition-colors duration-200"
                             >
-                              <Check className="w-4 h-4 text-gb-aqua-light shrink-0 opacity-70 group-hover/card:opacity-100 transition-opacity" />
+                              <CheckIcon className="w-4 h-4 text-gb-aqua-light shrink-0 opacity-70 group-hover/card:opacity-100 transition-opacity" />
                               <span>{feature}</span>
                             </div>
                           ))}
@@ -536,7 +553,7 @@ export function Store() {
                           {language === 'en' && (
                             <span className="absolute inset-0 w-full h-full -ml-[-100%] bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover/card:animate-[shimmer_1.5s_infinite]" />
                           )}
-                          <ShoppingCart className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                          <ShoppingCartIcon className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
                           {product.type === 'book' ? t("purchase_book") : t("purchase_template")}
                         </Button>
                       </div>

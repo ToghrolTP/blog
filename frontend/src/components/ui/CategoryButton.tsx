@@ -6,6 +6,8 @@ export interface CategoryButtonProps extends React.ButtonHTMLAttributes<HTMLButt
   imgAlt: string;
   label: string;
   themeColor?: 'orange' | 'aqua';
+  dimmed?: boolean;
+  postCountText?: string;
 }
 
 export function CategoryButton({
@@ -16,6 +18,8 @@ export function CategoryButton({
   className = '',
   themeColor = 'orange',
   disabled,
+  dimmed = false,
+  postCountText,
   ...props
 }: CategoryButtonProps) {
   // Theme styling configurations
@@ -48,7 +52,9 @@ export function CategoryButton({
       className={`group relative overflow-hidden bg-gb-bg-soft/20 rounded-lg p-6 flex flex-col items-center justify-center min-h-[160px] cursor-pointer transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-gb-bg active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none disabled:grayscale hover:scale-[1.02] ${
         active
           ? `ring-2 ${selectedTheme.activeRing} ${selectedTheme.activeShadow} ${selectedTheme.activeBg}`
-          : `border border-gb-bg-soft ${selectedTheme.hoverBorder} hover:bg-gb-bg-soft/30 ${selectedTheme.hoverShadow}`
+          : `border border-gb-bg-soft ${selectedTheme.hoverBorder} hover:bg-gb-bg-soft/30 ${selectedTheme.hoverShadow} ${
+              dimmed ? 'opacity-50 scale-[0.98] blur-[0.2px]' : ''
+            }`
       } ${className}`}
       aria-pressed={active}
       disabled={disabled}
@@ -68,9 +74,16 @@ export function CategoryButton({
       </div>
       
       {/* Text Label */}
-      <span className={`mt-4 z-10 font-mono font-bold text-sm text-gb-fg ${selectedTheme.hoverText} transition-colors duration-200 select-none`}>
-        {label}
-      </span>
+      <div className="mt-4 flex flex-col items-center gap-1 w-full text-center">
+        <span className={`z-10 font-mono font-bold text-sm text-gb-fg ${selectedTheme.hoverText} transition-colors duration-200 select-none`}>
+          {label}
+        </span>
+        {active && postCountText && (
+          <span className="z-10 text-[10px] font-mono font-normal text-gb-fg-dark/80 bg-gb-bg-soft/60 px-2 py-0.5 rounded border border-gb-bg-soft animate-in slide-in-from-top-1 fade-in duration-200">
+            {postCountText}
+          </span>
+        )}
+      </div>
     </button>
   );
 }
