@@ -113,6 +113,31 @@ if [[ -f "$DOCKERIGNORE" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# Copy production assets to prod_build/
+# ---------------------------------------------------------------------------
+info "Cleaning and preparing prod_build/ directory..."
+rm -rf prod_build
+mkdir -p prod_build
+
+# Copy backend binary
+if [[ -f "backend/target/release/backend" ]]; then
+    cp backend/target/release/backend prod_build/
+    ok "Copied backend binary to prod_build/"
+else
+    error "Compiled backend binary not found at backend/target/release/backend. Run: cargo build --release"
+    exit 1
+fi
+
+# Copy frontend assets
+if [[ -d "frontend/dist" ]]; then
+    cp -r frontend/dist prod_build/
+    ok "Copied frontend assets to prod_build/"
+else
+    error "Compiled frontend assets not found at frontend/dist. Run: npm run build --prefix frontend"
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
 # Create the zip
 # ---------------------------------------------------------------------------
 echo ""
