@@ -91,6 +91,7 @@ pub struct User {
     pub id: i64,
     pub username: String,
     pub avatar_url: String,
+    pub email: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, FromRow)]

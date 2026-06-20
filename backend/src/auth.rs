@@ -168,3 +168,130 @@ pub async fn logout() -> impl IntoResponse {
 
     (headers, Json("Logged out"))
 }
+
+#[derive(Debug, Deserialize)]
+pub struct CheckEmailQuery {
+    pub email: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CheckEmailResponse {
+    pub exists: bool,
+}
+
+pub async fn check_email(
+    Query(query): Query<CheckEmailQuery>,
+    State(pool): State<SqlitePool>,
+) -> Result<Json<CheckEmailResponse>, (StatusCode, String)> {
+    let email_clean = query.email.trim().to_lowercase();
+    let row = sqlx::query("SELECT 1 FROM users WHERE email = ?")
+        .bind(&email_clean)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(CheckEmailResponse { exists: row.is_some() }))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ManualAuthRequest {
+    pub email: String,
+    pub password: String,
+}
+
+pub async fn manual_auth(
+    State(pool): State<SqlitePool>,
+    jar: CookieJar,
+    Json(payload): Json<ManualAuthRequest>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let email_clean = payload.email.trim().to_lowercase();
+    if email_clean.is_empty() || payload.password.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, "Email and password are required".to_string()));
+    }
+
+    // Check if user exists
+    let existing_user = sqlx::query_as::<_, User>("SELECT id, username, avatar_url, email FROM users WHERE email = ?")
+        .bind(&email_clean)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let user_id: i64;
+    let final_user: User;
+
+    if let Some(user) = existing_user {
+        // User exists: verify password
+        let db_row = sqlx::query("SELECT password_hash FROM users WHERE id = ?")
+            .bind(user.id)
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+        
+        let password_hash: String = sqlx::Row::get(&db_row, "password_hash");
+
+        let matches = bcrypt::verify(&payload.password, &password_hash)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+        if !matches {
+            return Err((StatusCode::UNAUTHORIZED, "Invalid password".to_string()));
+        }
+
+        user_id = user.id;
+        final_user = user;
+    } else {
+        // User does not exist: register new user
+        let username = email_clean.split('@').next().unwrap_or("user").to_string();
+        let avatar_url = "/chatgpt-linux-pixel-art.png".to_string();
+
+        let hashed = bcrypt::hash(&payload.password, bcrypt::DEFAULT_COST)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+        let res = sqlx::query(
+            "INSERT INTO users (username, avatar_url, email, password_hash) VALUES (?, ?, ?, ?)"
+        )
+        .bind(&username)
+        .bind(&avatar_url)
+        .bind(&email_clean)
+        .bind(&hashed)
+        .execute(&pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+        user_id = res.last_insert_rowid();
+        
+        final_user = User {
+            id: user_id,
+            username,
+            avatar_url,
+            email: Some(email_clean),
+        };
+    }
+
+    // Create JWT
+    let exp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as usize
+        + 60 * 60 * 24 * 7; // 7 days
+
+    let claims = Claims { sub: user_id, exp };
+    let jwt_secret = env::var("ADMIN_SECRET").map_err(|_| {
+        (StatusCode::INTERNAL_SERVER_ERROR, "Server misconfiguration: ADMIN_SECRET not set".to_string())
+    })?;
+    
+    let token = encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(jwt_secret.as_bytes()),
+    )
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let mut cookie = Cookie::new("token", token);
+    cookie.set_path("/");
+    cookie.set_http_only(true);
+    cookie.set_same_site(axum_extra::extract::cookie::SameSite::Lax);
+    cookie.set_secure(env::var("NODE_ENV").unwrap_or_default() == "production");
+    cookie.set_max_age(time::Duration::days(7));
+
+    Ok((jar.add(cookie), Json(final_user)))
+}
