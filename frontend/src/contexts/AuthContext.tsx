@@ -8,7 +8,7 @@ interface AuthContextType {
   login: () => void;
   logout: () => Promise<void>;
   loginWithGithub: () => void;
-  loginWithPassword: (email: string, password: string) => Promise<boolean>;
+  loginWithPassword: (email: string, password: string, username?: string) => Promise<boolean>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -46,14 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.location.href = '/api/auth/github';
   };
 
-  const loginWithPassword = async (email: string, password: string): Promise<boolean> => {
+  const loginWithPassword = async (email: string, password: string, username?: string): Promise<boolean> => {
     try {
       const res = await fetch('/api/auth/manual', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, username }),
       });
       if (res.ok) {
         setUser(await res.json());
