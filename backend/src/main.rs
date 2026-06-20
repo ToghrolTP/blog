@@ -326,7 +326,10 @@ async fn init_db(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>> {
         .execute(pool)
         .await;
         
-    let _ = sqlx::query("ALTER TABLE users ADD COLUMN email TEXT UNIQUE")
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN email TEXT")
+        .execute(pool)
+        .await;
+    let _ = sqlx::query("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")
         .execute(pool)
         .await;
     let _ = sqlx::query("ALTER TABLE users ADD COLUMN password_hash TEXT")

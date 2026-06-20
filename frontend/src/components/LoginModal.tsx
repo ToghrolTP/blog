@@ -192,7 +192,6 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
             )}
           </div>
 
-          {/* Submit Button */}
           <Button
             type="submit"
             disabled={isSubmitting || !email.trim() || !password}
@@ -200,9 +199,7 @@ export function LoginModal({ isOpen, onClose }: LoginModalProps) {
           >
             {isSubmitting
               ? t('feedback_submitting') || 'Sending...'
-              : emailExists === false
-              ? t('signup_submit') || 'Sign Up'
-              : t('login_submit') || 'Log In'}
+              : t('auth_submit') || 'Sign In/Login'}
           </Button>
         </form>
 

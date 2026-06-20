@@ -92,5 +92,6 @@
   "email_new_notice": "No account found with this email. We will create a new one for you.",
   "email_checking": "Checking email...",
   "login_error_invalid": "Invalid password. Please try again.",
-  "login_error_failed": "Authentication failed. Please try again."
+  "login_error_failed": "Authentication failed. Please try again.",
+  "auth_submit": "Sign In/Login"
 }
