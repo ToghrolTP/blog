@@ -2,20 +2,21 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Post, Comment, Product } from '../types';
 import { 
+  BugIcon,
   PencilIcon, 
-  Trash2Icon, 
+  TrashIcon, 
   PlusIcon, 
   LogOutIcon, 
-  CheckSquare, 
-  Square, 
+  CheckSquareIcon, 
+  SquareIcon, 
   XIcon, 
   LayoutDashboardIcon, 
   MessageSquareIcon, 
   TagIcon, 
   ArrowLeftIcon, 
   FileTextIcon,
-  Settings
-} from 'lucide-react';
+  SettingsIcon
+} from './Icons';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
@@ -26,15 +27,18 @@ export function AdminPanel() {
   const navigate = useNavigate();
   const [secret, setSecret] = useState(localStorage.getItem('adminSecret') || '');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'products' | 'settings'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'products' | 'feedback' | 'settings'>('posts');
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [settings, setSettings] = useState<{
     site_maintenance?: boolean;
     blog_maintenance?: boolean;
     comments_maintenance?: boolean;
     store_maintenance?: boolean;
+    feedback_enabled?: boolean;
+    feedback_allowed_paths?: string;
   }>({});
   const [savingSettings, setSavingSettings] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -114,8 +118,48 @@ export function AdminPanel() {
     setLoading(false);
   };
 
+  const fetchFeedbacks = async (currentSecret: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/feedbacks', {
+        headers: { 'Authorization': `Bearer ${currentSecret}` }
+      });
+      if (res.ok) {
+        setFeedbacks(await res.json());
+      } else {
+        setError('Failed to fetch feedbacks');
+      }
+    } catch (err) {
+      setError('Network error fetching feedbacks');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteFeedback = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this feedback?')) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/feedbacks/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${secret}` }
+      });
+      if (res.ok) {
+        setFeedbacks(prev => prev.filter(f => f.id !== id));
+        setSuccessMessage('Feedback deleted successfully');
+        setTimeout(() => setSuccessMessage(null), 3000);
+      } else {
+        alert('Failed to delete feedback (Unauthorized?)');
+      }
+    } catch (err) {
+      alert('Error deleting feedback');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleToggleSetting = async (
-    key: 'site_maintenance' | 'blog_maintenance' | 'comments_maintenance' | 'store_maintenance',
+    key: 'site_maintenance' | 'blog_maintenance' | 'comments_maintenance' | 'store_maintenance' | 'feedback_enabled',
     checked: boolean
   ) => {
     setSavingSettings(true);
@@ -150,6 +194,7 @@ export function AdminPanel() {
       if (activeTab === 'posts') fetchPosts(secret);
       else if (activeTab === 'comments') fetchComments(secret);
       else if (activeTab === 'products') fetchProducts();
+      else if (activeTab === 'feedback') fetchFeedbacks(secret);
       else if (activeTab === 'settings') fetchSettings();
     }
   }, [isAuthenticated, activeTab]);
@@ -642,7 +687,7 @@ export function AdminPanel() {
                                 }}
                                 className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition-opacity"
                               >
-                                <Trash2Icon size={14} className="text-gb-red-light" />
+                                <TrashIcon size={14} className="text-gb-red-light" />
                               </button>
                             </div>
                           ))}
@@ -1084,6 +1129,19 @@ export function AdminPanel() {
             </button>
 
             <button
+              onClick={() => setActiveTab('feedback')}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded transition-all text-sm w-full text-start shrink-0 cursor-pointer ${
+                activeTab === 'feedback'
+                  ? 'bg-gb-orange-light/10 text-gb-orange-light border-l-2 border-gb-orange-light font-bold'
+                  : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
+              }`}
+            >
+              <BugIcon size={18} />
+              <span>Feedback</span>
+              <span className="ml-auto text-xs bg-gb-bg-soft px-1.5 py-0.5 rounded border border-gb-bg-light/40 font-bold tabular-nums">{feedbacks.length}</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('settings')}
               className={`flex items-center gap-3 px-3 py-2.5 rounded transition-all text-sm w-full text-start shrink-0 cursor-pointer ${
                 activeTab === 'settings'
@@ -1091,7 +1149,7 @@ export function AdminPanel() {
                   : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
               }`}
             >
-              <Settings size={18} />
+              <SettingsIcon size={18} />
               <span>Settings</span>
             </button>
           </nav>
@@ -1133,12 +1191,13 @@ export function AdminPanel() {
               {activeTab === 'posts' && 'Create, edit, and manage blog posts.'}
               {activeTab === 'comments' && 'Moderate user comments across posts.'}
               {activeTab === 'products' && 'Manage shop items, books, and templates.'}
+              {activeTab === 'feedback' && 'View and manage user bug reports and feedbacks.'}
               {activeTab === 'settings' && 'Configure global site preferences and maintenance modes.'}
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            {activeTab !== 'comments' && activeTab !== 'settings' && (
+            {activeTab !== 'comments' && activeTab !== 'settings' && activeTab !== 'feedback' && (
               <Button 
                 onClick={() => {
                   setIsCreatingMode(true);
@@ -1175,7 +1234,7 @@ export function AdminPanel() {
               }}
               className={`gap-2 font-mono cursor-pointer ${isSelectionMode ? 'bg-gb-red-light/20 text-gb-red-light border-gb-red-light' : ''}`}
             >
-              {isSelectionMode ? <XIcon size={16} /> : <CheckSquare size={16} />} 
+              {isSelectionMode ? <XIcon size={16} /> : <CheckSquareIcon size={16} />} 
               {isSelectionMode ? 'Cancel' : 'Select'}
             </Button>
           </div>
@@ -1217,7 +1276,7 @@ export function AdminPanel() {
                       <div className="flex gap-4 items-start">
                         {isSelectionMode && (
                           <div className="text-gb-red-light shrink-0 mt-1">
-                            {isSelected ? <CheckSquare size={20} /> : <Square size={20} className="text-gb-fg-dark/50" />}
+                            {isSelected ? <CheckSquareIcon size={20} /> : <SquareIcon size={20} className="text-gb-fg-dark/50" />}
                           </div>
                         )}
                         
@@ -1281,7 +1340,7 @@ export function AdminPanel() {
                             className="text-gb-orange-light hover:text-gb-orange p-1.5"
                             title="Delete"
                           >
-                            <Trash2Icon size={16} />
+                            <TrashIcon size={16} />
                           </Button>
                         </div>
                       )}
@@ -1319,7 +1378,7 @@ export function AdminPanel() {
                       <div className="flex gap-4 items-start">
                         {isSelectionMode && (
                           <div className="text-gb-red-light shrink-0 mt-1">
-                            {isSelected ? <CheckSquare size={20} /> : <Square size={20} className="text-gb-fg-dark/50" />}
+                            {isSelected ? <CheckSquareIcon size={20} /> : <SquareIcon size={20} className="text-gb-fg-dark/50" />}
                           </div>
                         )}
                         
@@ -1361,7 +1420,7 @@ export function AdminPanel() {
                             className="text-gb-orange-light hover:text-gb-orange p-1.5"
                             title="Delete Comment"
                           >
-                            <Trash2Icon size={16} />
+                            <TrashIcon size={16} />
                           </Button>
                         </div>
                       )}
@@ -1413,7 +1472,7 @@ export function AdminPanel() {
                       <div className="flex gap-4 items-start">
                         {isSelectionMode && (
                           <div className="text-gb-red-light shrink-0 mt-1">
-                            {isSelected ? <CheckSquare size={20} /> : <Square size={20} className="text-gb-fg-dark/50" />}
+                            {isSelected ? <CheckSquareIcon size={20} /> : <SquareIcon size={20} className="text-gb-fg-dark/50" />}
                           </div>
                         )}
                         
@@ -1495,7 +1554,7 @@ export function AdminPanel() {
                             className="text-gb-orange-light hover:text-gb-orange p-1.5 delete-button"
                             title="Delete"
                           >
-                            <Trash2Icon size={16} />
+                            <TrashIcon size={16} />
                           </Button>
                         </div>
                       )}
@@ -1504,6 +1563,58 @@ export function AdminPanel() {
                 })}
                 {products.length === 0 && (
                   <p className="font-mono text-gb-fg-dark italic text-center py-8 border-2 border-dashed border-gb-bg-soft rounded-lg">No products found.</p>
+                )}
+              </div>
+            )}
+
+            {/* FEEDBACK PANEL */}
+            {activeTab === 'feedback' && (
+              <div className="space-y-4">
+                {feedbacks.map(fb => {
+                  return (
+                    <Card 
+                      key={fb.id} 
+                      className="group relative flex flex-col justify-between !p-5 transition-all duration-300 border-2 border-gb-bg-soft/60 hover:border-gb-orange-light"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          {fb.user ? (
+                            <>
+                              <img src={fb.user.avatar_url} alt={fb.user.username} className="w-5 h-5 rounded-full border border-gb-bg-soft" />
+                              <span className="font-mono text-sm font-bold text-gb-aqua-light">{fb.user.username}</span>
+                            </>
+                          ) : (
+                            <span className="font-mono text-sm font-bold text-gb-fg-dark italic">Anonymous</span>
+                          )}
+                          <span className="text-[10px] text-gb-fg-dark/60 font-mono">{new Date(fb.created_at).toLocaleString()}</span>
+                          <span className="text-[10px] px-2 py-0.5 bg-gb-orange-light/10 text-gb-orange-light border border-gb-orange-light/20 rounded-sm font-mono ml-auto">
+                            Route: {fb.route}
+                          </span>
+                        </div>
+
+                        <p className="font-mono text-sm text-gb-fg mt-3 whitespace-pre-wrap break-all leading-relaxed bg-gb-bg-soft/30 p-3 border border-gb-bg-soft/50">
+                          {fb.content}
+                        </p>
+                      </div>
+
+                      {/* Delete button */}
+                      <div className="absolute right-4 bottom-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteFeedback(fb.id);
+                          }}
+                          className="p-1.5 bg-gb-red/10 text-gb-red-light border-gb-red-light/20 hover:bg-gb-red-light hover:text-gb-bg hover:border-transparent transition-all rounded cursor-pointer"
+                          title="Delete Feedback"
+                        >
+                          <TrashIcon size={16} />
+                        </button>
+                      </div>
+                    </Card>
+                  );
+                })}
+                {feedbacks.length === 0 && (
+                  <p className="font-mono text-gb-fg-dark italic text-center py-8 border-2 border-dashed border-gb-bg-soft rounded-lg">No feedback found.</p>
                 )}
               </div>
             )}
@@ -1546,6 +1657,13 @@ export function AdminPanel() {
                       activeLabel: 'Under Maintenance',
                       inactiveLabel: 'Published',
                     },
+                    {
+                      key: 'feedback_enabled' as const,
+                      label: 'Feedback Feature Status',
+                      desc: 'Toggle the floating feedback button on/off across allowed paths.',
+                      activeLabel: 'Enabled',
+                      inactiveLabel: 'Disabled',
+                    },
                   ].map(({ key, label, desc, activeLabel, inactiveLabel }, idx) => {
                     const isChecked = !!settings[key];
                     return (
@@ -1585,6 +1703,61 @@ export function AdminPanel() {
                       </div>
                     );
                   })}
+
+                  {/* Feedback Allowed Paths Input */}
+                  <div className="border-t border-gb-bg-soft/30 pt-6">
+                    <div className="flex flex-col gap-2">
+                      <div className="space-y-1">
+                        <h4 className="text-base font-bold text-gb-fg">Feedback Allowed Paths</h4>
+                        <p className="text-xs text-gb-fg-dark">
+                          Comma-separated paths or prefixes where the feedback button is active. Use '*' or leave empty for everywhere.
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 mt-2">
+                        <Input
+                          type="text"
+                          value={settings.feedback_allowed_paths || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSettings(prev => ({ ...prev, feedback_allowed_paths: val }));
+                          }}
+                          onBlur={async (e) => {
+                            setSavingSettings(true);
+                            try {
+                              const res = await fetch('/api/settings', {
+                                method: 'PUT',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${secret}`
+                                },
+                                body: JSON.stringify({
+                                  key: 'feedback_allowed_paths',
+                                  value: e.target.value
+                                })
+                              });
+                              if (res.ok) {
+                                setSuccessMessage('Settings saved successfully');
+                                setTimeout(() => setSuccessMessage(null), 3000);
+                              } else {
+                                setError('Failed to save settings');
+                              }
+                            } catch (err) {
+                              setError('Network error saving settings');
+                            } finally {
+                              setSavingSettings(false);
+                            }
+                          }}
+                          disabled={savingSettings}
+                          placeholder="e.g. *, /store, /post"
+                          className="max-w-md font-mono"
+                        />
+                        {savingSettings && (
+                          <span className="text-xs text-gb-fg-dark/50 font-mono animate-pulse">Saving...</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </Card>
             )}
@@ -1604,7 +1777,7 @@ export function AdminPanel() {
               className="p-2 bg-gb-orange-light/20 text-gb-orange-light hover:bg-gb-orange-light hover:text-gb-bg rounded border border-gb-orange-light transition-colors group cursor-pointer"
               title="Bulk Delete"
             >
-              <Trash2Icon size={18} className="group-hover:scale-110 transition-transform" />
+              <TrashIcon size={18} className="group-hover:scale-110 transition-transform" />
             </button>
           </div>
         </div>
@@ -1615,7 +1788,7 @@ export function AdminPanel() {
         <div className="fixed inset-0 bg-[#020617]/80 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200 p-4">
           <div className="bg-gb-bg border-2 border-gb-bg-soft rounded p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 mb-4 text-gb-orange-light">
-              <Trash2Icon size={28} />
+              <TrashIcon size={28} />
               <h3 className="text-xl font-bold font-mono">Confirm Deletion</h3>
             </div>
             <p className="text-gb-fg-dark font-mono text-sm mb-8 leading-relaxed">
