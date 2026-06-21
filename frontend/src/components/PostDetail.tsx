@@ -149,12 +149,29 @@ export function PostDetail() {
             "@context": "https://schema.org",
             "@type": "BlogPosting",
             "headline": currentTranslation.title,
+            "description": excerpt,
+            "url": `${window.location.origin}${language === 'fa' ? '/fa' : ''}/post/${post.id}`,
+            "mainEntityOfPage": {
+              "@type": "WebPage",
+              "@id": `${window.location.origin}${language === 'fa' ? '/fa' : ''}/post/${post.id}`
+            },
             "image": post.thumbnailUrl ? [post.thumbnailUrl] : [],
             "datePublished": post.date,
+            "dateModified": post.date,
             "author": [{
               "@type": "Person",
-              "name": "Blog Author"
-            }]
+              "name": "Toghrol",
+              "url": "https://github.com/toghrol"
+            }],
+            "publisher": {
+              "@type": "Organization",
+              "name": "Log40",
+              "url": window.location.origin,
+              "logo": {
+                "@type": "ImageObject",
+                "url": `${window.location.origin}/favicon.png`
+              }
+            }
           })}
         </script>
       </SEO>
