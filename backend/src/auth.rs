@@ -103,8 +103,8 @@ pub async fn github_callback(
         + 60 * 60 * 24 * 7; // 7 days
 
     let claims = Claims { sub: github_user.id, exp };
-    let jwt_secret = env::var("ADMIN_SECRET").map_err(|_| {
-        (StatusCode::INTERNAL_SERVER_ERROR, "Server misconfiguration: ADMIN_SECRET not set".to_string())
+    let jwt_secret = env::var("JWT_SECRET").or_else(|_| env::var("ADMIN_SECRET")).map_err(|_| {
+        (StatusCode::INTERNAL_SERVER_ERROR, "Server misconfiguration: JWT_SECRET or ADMIN_SECRET not set".to_string())
     })?;
     let token = encode(
         &Header::default(),
@@ -126,7 +126,7 @@ pub async fn github_callback(
 
 pub fn get_user_from_jar(jar: &CookieJar) -> Option<i64> {
     let cookie = jar.get("token")?;
-    let jwt_secret = env::var("ADMIN_SECRET").ok()?;
+    let jwt_secret = env::var("JWT_SECRET").or_else(|_| env::var("ADMIN_SECRET")).ok()?;
     let token_data = decode::<Claims>(
         cookie.value(),
         &DecodingKey::from_secret(jwt_secret.as_bytes()),
@@ -317,8 +317,8 @@ pub async fn manual_auth(
         + 60 * 60 * 24 * 7; // 7 days
 
     let claims = Claims { sub: user_id, exp };
-    let jwt_secret = env::var("ADMIN_SECRET").map_err(|_| {
-        (StatusCode::INTERNAL_SERVER_ERROR, "Server misconfiguration: ADMIN_SECRET not set".to_string())
+    let jwt_secret = env::var("JWT_SECRET").or_else(|_| env::var("ADMIN_SECRET")).map_err(|_| {
+        (StatusCode::INTERNAL_SERVER_ERROR, "Server misconfiguration: JWT_SECRET or ADMIN_SECRET not set".to_string())
     })?;
     
     let token = encode(
