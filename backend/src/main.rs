@@ -537,6 +537,13 @@ async fn serve_seo_post(
             let base_url = env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
             let current_url = format!("{}{}", base_url, uri.path());
             let thumb = post.thumbnail_url.unwrap_or_default();
+            let absolute_thumb = if thumb.is_empty() {
+                format!("{}/og-image.png", base_url)
+            } else if thumb.starts_with('/') {
+                format!("{}{}", base_url, thumb)
+            } else {
+                thumb.clone()
+            };
             
             html = html.replace("<title>Log40</title>", "");
             html = html.replace("<title>Vite App</title>", "");
@@ -550,21 +557,18 @@ async fn serve_seo_post(
                 <meta property="og:description" content="{}" />
                 <meta property="og:url" content="{}" />
                 <meta property="og:type" content="article" />
+                <meta property="og:site_name" content="Log40" />
+                <meta property="og:image" content="{}" />
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="twitter:title" content="{}" />
-                <meta name="twitter:description" content="{}" />"#,
-                escape_html(&trans.title), escape_html(&trans.summary), escape_html(&current_url),
-                escape_html(&trans.title), escape_html(&trans.summary), escape_html(&current_url),
-                escape_html(&trans.title), escape_html(&trans.summary)
-            );
-            
-            if !thumb.is_empty() {
-                meta.push_str(&format!(
-                    r#"<meta property="og:image" content="{}" />
+                <meta name="twitter:description" content="{}" />
                 <meta name="twitter:image" content="{}" />"#,
-                    escape_html(&thumb), escape_html(&thumb)
-                ));
-            }
+                escape_html(&trans.title), escape_html(&trans.summary), escape_html(&current_url),
+                escape_html(&trans.title), escape_html(&trans.summary), escape_html(&current_url),
+                escape_html(&absolute_thumb),
+                escape_html(&trans.title), escape_html(&trans.summary),
+                escape_html(&absolute_thumb)
+            );
             
             for t in &translations {
                 let alt_url = if t.language == "fa" {
@@ -587,11 +591,11 @@ async fn serve_seo_post(
                 <article dir="{}">
                     <header>
                         <h1>{}</h1>
-                        <time>{}</time>
+                        <time datetime="{}">{}</time>
                         <p><strong>{}</strong></p>
                     </header>
                     <section>"#,
-                dir, escape_html(&trans.title), escape_html(&post.date), escape_html(&trans.summary)
+                dir, escape_html(&trans.title), escape_html(&post.date), escape_html(&post.date), escape_html(&trans.summary)
             );
             
             for line in trans.content.lines() {
@@ -608,11 +612,11 @@ async fn serve_seo_post(
 
             // Add schema markup
             let person_schema = format!(
-                r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://linkedin.com/in/toghrol"]}}"#,
+                r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
                 base_url
             );
             let organization_schema = format!(
-                r#"{{"@context":"https://schema.org","@type":"Organization","@id":"{}/#organization","name":"Log40","url":"{}/","logo":"{}/favicon.png","sameAs":["https://github.com/toghrol","https://linkedin.com/in/toghrol"]}}"#,
+                r#"{{"@context":"https://schema.org","@type":"Organization","@id":"{}/#organization","name":"Log40","url":"{}/","logo":"{}/favicon.png","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
                 base_url, base_url, base_url
             );
             let blogposting_schema = format!(
@@ -871,28 +875,44 @@ async fn serve_seo_home(
     };
 
     let description = if is_fa {
-        "وبلاگ شخصی برای به اشتراک‌گذاری تجربیات در مهندسی نرم‌افزار، توسعه وب و تکنولوژی."
+        "وبلاگ تخصصی مهندسی نرم‌افزار، برنامه‌نویسی راست (Rust)، کرنل لینوکس و معماری سیستم‌ها توسط طغرل در Log40. مقالات عمیق و کاربردی."
     } else {
-        "Personal blog sharing insights on software engineering, web development, and technology."
+        "Explore deep-dive software engineering tutorials, Rust programming, Linux kernel internals, and backend architecture insights by Toghrol at Log40."
     };
 
     html = html.replace("<title>Log40</title>", "");
     html = html.replace("<title>Vite App</title>", "");
     html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
 
+    let person_schema = format!(
+        r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
+        base_url
+    );
+
     let organization_schema = format!(
-        r#"{{"@context":"https://schema.org","@type":"Organization","@id":"{}/#organization","name":"Log40","url":"{}/","logo":"{}/favicon.png","sameAs":["https://github.com/toghrol","https://linkedin.com/in/toghrol"]}}"#,
-        base_url, base_url, base_url
+        r#"{{"@context":"https://schema.org","@type":"Organization","@id":"{}/#organization","name":"Log40","url":"{}/","logo":"{}/favicon.png","description":"{}","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
+        base_url, base_url, base_url, escape_html(description)
     );
 
     let website_schema = format!(
-        r#"{{"@context":"https://schema.org","@type":"WebSite","@id":"{}/#website","url":"{}/","name":"Log40","description":"{}","publisher":{{"@id":"{}/#organization"}}}}"#,
-        base_url, base_url, escape_html(description), base_url
+        r#"{{"@context":"https://schema.org","@type":"WebSite","@id":"{}/#website","url":"{}/","name":"Log40","description":"{}","publisher":{{"@id":"{}/#organization"}},"potentialAction":{{"@type":"SearchAction","target":{{"@type":"EntryPoint","urlTemplate":"{}/?q={{search_term_string}}"}},"query-input":"required name=search_term_string"}}}}"#,
+        base_url, base_url, escape_html(description), base_url, base_url
     );
 
+    let mut blog_posts_json = Vec::new();
+    for db_post in &posts_db {
+        let post_url = if is_fa {
+            format!("{}/fa/post/{}", base_url, db_post.id)
+        } else {
+            format!("{}/post/{}", base_url, db_post.id)
+        };
+        blog_posts_json.push(format!(r#"{{"@type":"BlogPosting","@id":"{}#blogposting"}}"#, post_url));
+    }
+    let blog_posts_str = blog_posts_json.join(",");
+
     let blog_schema = format!(
-        r#"{{"@context":"https://schema.org","@type":"Blog","@id":"{}/#blog","name":"Log40 Blog","description":"{}","publisher":{{"@id":"{}/#organization"}}}}"#,
-        base_url, escape_html(description), base_url
+        r#"{{"@context":"https://schema.org","@type":"Blog","@id":"{}/#blog","name":"Log40 Blog","description":"{}","publisher":{{"@id":"{}/#organization"}},"inLanguage":["en","fa"],"url":"{}","author":{{"@id":"{}/#person"}},"blogPost":[{}]}}"#,
+        base_url, escape_html(description), base_url, current_url, base_url, blog_posts_str
     );
 
     let meta = format!(
@@ -905,23 +925,30 @@ async fn serve_seo_home(
         <meta property="og:description" content="{}" />
         <meta property="og:url" content="{}" />
         <meta property="og:type" content="website" />
-        <meta name="twitter:card" content="summary" />
+        <meta property="og:site_name" content="Log40" />
+        <meta property="og:image" content="{}/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="{}" />
         <meta name="twitter:description" content="{}" />
+        <meta name="twitter:image" content="{}/og-image.png" />
+        <script type="application/ld+json">{}</script>
+        <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>"#,
         escape_html(title), escape_html(description), escape_html(&current_url),
         base_url, base_url,
         escape_html(title), escape_html(description), escape_html(&current_url),
+        base_url,
         escape_html(title), escape_html(description),
-        organization_schema, website_schema, blog_schema
+        base_url,
+        person_schema, organization_schema, website_schema, blog_schema, person_schema
     );
 
     let mut body_html = format!(
         r#"<div id="root">
         <header>
-            <h1>Log40</h1>
+            <h1>Software Engineering, Linux & Rust — Log40</h1>
             <p>{}</p>
         </header>
         <main>
@@ -942,11 +969,12 @@ async fn serve_seo_home(
                 r#"<li>
                     <h3><a href="{}">{}</a></h3>
                     <p>{}</p>
-                    <time>{}</time>
+                    <time datetime="{}">{}</time>
                 </li>"#,
                 escape_html(&post_url),
                 escape_html(&trans.title),
                 escape_html(&trans.summary),
+                escape_html(&db_post.date),
                 escape_html(&db_post.date)
             ));
         }
@@ -996,8 +1024,8 @@ async fn serve_seo_about(
     html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
 
     let person_schema = format!(
-        r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://linkedin.com/in/toghrol"],"jobTitle":"Systems & Rust Software Engineer","description":"{}"}}"#,
-        base_url, escape_html(description)
+        r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"],"jobTitle":"Systems & Rust Software Engineer","description":"{}","image":"{}/favicon.png"}}"#,
+        base_url, escape_html(description), base_url
     );
 
     let meta = format!(
@@ -1010,14 +1038,19 @@ async fn serve_seo_about(
         <meta property="og:description" content="{}" />
         <meta property="og:url" content="{}" />
         <meta property="og:type" content="profile" />
-        <meta name="twitter:card" content="summary" />
+        <meta property="og:site_name" content="Log40" />
+        <meta property="og:image" content="{}/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="{}" />
         <meta name="twitter:description" content="{}" />
+        <meta name="twitter:image" content="{}/og-image.png" />
         <script type="application/ld+json">{}</script>"#,
         escape_html(title), escape_html(description), escape_html(&current_url),
         base_url, base_url,
         escape_html(title), escape_html(description), escape_html(&current_url),
+        base_url,
         escape_html(title), escape_html(description),
+        base_url,
         person_schema
     );
 
@@ -1026,6 +1059,7 @@ async fn serve_seo_about(
             r#"<div id="root">
             <article dir="rtl">
                 <header>
+                    <img src="/favicon.png" alt="طغرل - مهندس سیستم و توسعه‌دهنده راست" />
                     <h1>درباره من</h1>
                 </header>
                 <section>
@@ -1047,6 +1081,7 @@ async fn serve_seo_about(
             r#"<div id="root">
             <article dir="ltr">
                 <header>
+                    <img src="/favicon.png" alt="Toghrol - Systems & Rust Software Engineer" />
                     <h1>About Me</h1>
                 </header>
                 <section>
