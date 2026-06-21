@@ -404,7 +404,7 @@ export function Store() {
           postCountText={getCategoryCountText('book')}
           onClick={() => handleTypeToggle('book')}
           disabled={loading}
-          imgSrc="/book-pixel-art.svg"
+          imgSrc="/book-pixel-art.png"
           imgAlt="Book Banner"
           label={t("book_cat")}
           themeColor="orange"
@@ -510,7 +510,7 @@ export function Store() {
                       {/* Premium Price Tag */}
                       <div className="absolute top-4 right-4 z-20 transition-transform duration-300 group-hover/card:scale-105 group-hover/card:rotate-2 origin-top-right" dir={language === "fa" ? "rtl" : "ltr"}>
                         <span className="bg-gb-orange-light text-black font-extrabold font-mono px-3 py-1.5 rounded-sm text-sm shadow-[4px_4px_0_0_rgba(0,0,0,0.2)] product-price">
-                          {language === "fa" ? `${new Intl.NumberFormat('fa-IR').format(translation.price)} ریال` : `$${translation.price}`}
+                          {language === "fa" ? `${new Intl.NumberFormat('fa-IR').format(translation.price)} تومان` : `$${translation.price}`}
                         </span>
                       </div>
 

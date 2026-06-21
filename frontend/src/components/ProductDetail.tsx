@@ -230,7 +230,7 @@ export function ProductDetail() {
                     {translation.title}
                   </h1>
                   <span className="bg-gb-orange-light text-black font-extrabold font-mono px-4 py-2 rounded-sm text-lg shadow-[4px_4px_0_0_rgba(0,0,0,0.2)] product-price shrink-0" dir={language === "fa" ? "rtl" : "ltr"}>
-                    {language === "fa" ? `${new Intl.NumberFormat('fa-IR').format(translation.price)} ریال` : `$${translation.price}`}
+                    {language === "fa" ? `${new Intl.NumberFormat('fa-IR').format(translation.price)} تومان` : `$${translation.price}`}
                   </span>
                 </div>
 
