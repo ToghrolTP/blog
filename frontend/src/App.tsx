@@ -9,6 +9,7 @@ import { PostDetail } from './components/PostDetail';
 import { AdminPanel } from './components/AdminPanel';
 import { Store } from './components/Store';
 import { ProductDetail } from './components/ProductDetail';
+import { CheckoutVerify } from './components/CheckoutVerify';
 import { About } from './components/About';
 import { TerminalWindowIcon } from './components/Icons';
 import { Post } from './types';
@@ -268,9 +269,26 @@ function Home() {
     );
   }
 
+  const metaDescription = language === 'fa' 
+    ? "وبلاگ تخصصی مهندسی نرم‌افزار، برنامه‌نویسی راست (Rust)، کرنل لینوکس و معماری سیستم‌ها توسط طغرل در Log40. مقالات عمیق و کاربردی."
+    : "Explore deep-dive software engineering tutorials, Rust programming, Linux kernel internals, and backend architecture insights by Toghrol at Log40.";
+
   return (
     <div className="animate-in fade-in duration-700">
-      <SEO title={`${t('welcome_title') || 'Welcome'} | Log40`}>
+      <SEO title={`${t('welcome_title') || 'Welcome'} | Log40`} description={metaDescription}>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Person",
+            "@id": `${window.location.origin}/#person`,
+            "name": "Toghrol",
+            "url": "https://github.com/toghrol",
+            "sameAs": [
+              "https://github.com/toghrol",
+              "https://www.linkedin.com/in/toghrol/"
+            ]
+          })}
+        </script>
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
@@ -279,9 +297,10 @@ function Home() {
             "name": "Log40",
             "url": `${window.location.origin}/`,
             "logo": `${window.location.origin}/favicon.png`,
+            "description": metaDescription,
             "sameAs": [
               "https://github.com/toghrol",
-              "https://linkedin.com/in/toghrol"
+              "https://www.linkedin.com/in/toghrol/"
             ]
           })}
         </script>
@@ -292,7 +311,7 @@ function Home() {
             "@id": `${window.location.origin}/#website`,
             "url": `${window.location.origin}/`,
             "name": "Log40",
-            "description": "A personal blog sharing insights on software engineering, web development, and technology.",
+            "description": metaDescription,
             "publisher": {
               "@id": `${window.location.origin}/#organization`
             },
@@ -312,7 +331,12 @@ function Home() {
             "@type": "Blog",
             "@id": `${window.location.origin}/#blog`,
             "name": "Log40 Blog",
-            "description": "A personal blog sharing insights on software engineering, web development, and technology.",
+            "description": metaDescription,
+            "inLanguage": ["en", "fa"],
+            "url": `${window.location.origin}${language === 'fa' ? '/fa' : ''}`,
+            "author": {
+              "@id": `${window.location.origin}/#person`
+            },
             "publisher": {
               "@id": `${window.location.origin}/#organization`
             }
@@ -657,11 +681,13 @@ function AppContent() {
                   <Route path="/" element={<Home />} />
                   <Route path="/store" element={<Store />} />
                   <Route path="/store/product/:id" element={<ProductDetail />} />
+                  <Route path="/store/checkout/verify" element={<CheckoutVerify />} />
                   <Route path="/post/:id" element={<PostDetail />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/fa" element={<Home />} />
                   <Route path="/fa/store" element={<Store />} />
                   <Route path="/fa/store/product/:id" element={<ProductDetail />} />
+                  <Route path="/fa/store/checkout/verify" element={<CheckoutVerify />} />
                   <Route path="/fa/post/:id" element={<PostDetail />} />
                   <Route path="/fa/about" element={<About />} />
                   <Route path="/admin" element={<AdminPanel />} />
