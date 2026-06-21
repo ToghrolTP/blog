@@ -44,20 +44,23 @@ export function SEO({
     linkCanonical.setAttribute('href', currentUrl);
 
     // 4. Open Graph Tags
+    const absoluteImage = image 
+      ? (image.startsWith('/') ? `${window.location.origin}${image}` : image)
+      : `${window.location.origin}/og-image.png`;
+
     const ogTags = [
       { property: 'og:title', content: title },
       { property: 'og:description', content: description },
       { property: 'og:url', content: currentUrl },
       { property: 'og:type', content: type },
+      { property: 'og:site_name', content: 'Log40' },
     ];
     
     // Clean up old og:image to avoid duplicates
     const oldOgImg = document.querySelector('meta[property="og:image"]');
     if (oldOgImg) oldOgImg.remove();
     
-    if (image) {
-      ogTags.push({ property: 'og:image', content: image });
-    }
+    ogTags.push({ property: 'og:image', content: absoluteImage });
 
     ogTags.forEach(({ property, content }) => {
       let tag = document.querySelector(`meta[property="${property}"]`);
@@ -71,7 +74,7 @@ export function SEO({
 
     // 5. Twitter Card Tags
     const twitterTags = [
-      { name: 'twitter:card', content: image ? 'summary_large_image' : 'summary' },
+      { name: 'twitter:card', content: 'summary_large_image' },
       { name: 'twitter:title', content: title },
       { name: 'twitter:description', content: description },
     ];
@@ -79,9 +82,7 @@ export function SEO({
     const oldTwitterImg = document.querySelector('meta[name="twitter:image"]');
     if (oldTwitterImg) oldTwitterImg.remove();
 
-    if (image) {
-      twitterTags.push({ name: 'twitter:image', content: image });
-    }
+    twitterTags.push({ name: 'twitter:image', content: absoluteImage });
 
     twitterTags.forEach(({ name, content }) => {
       let tag = document.querySelector(`meta[name="${name}"]`);
