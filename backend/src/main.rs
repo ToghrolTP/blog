@@ -95,6 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/admin/feedbacks/{id}", delete(handlers::delete_feedback))
         .route("/api/products", get(products::get_products).post(products::create_product))
         .route("/api/products/{id}", get(products::get_product).put(products::update_product).delete(products::delete_product))
+        .route("/api/downloads/{order_id}", get(products::download_file))
         .route("/", get(serve_seo_home))
         .route("/fa", get(serve_seo_home))
         .route("/fa/", get(serve_seo_home))
@@ -322,6 +323,33 @@ async fn init_db(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>> {
     )
     .execute(pool)
     .await?;
+
+    // Create orders table
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS orders (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            email TEXT NOT NULL,
+            product_id TEXT NOT NULL,
+            amount REAL NOT NULL,
+            currency TEXT NOT NULL,
+            gateway TEXT NOT NULL,
+            status TEXT NOT NULL,
+            ref_id TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+
+    // Add file_path to products table
+    let _ = sqlx::query("ALTER TABLE products ADD COLUMN file_path TEXT")
+        .execute(pool)
+        .await;
 
     // Migrations to add upvotes safely
     let _ = sqlx::query("ALTER TABLE posts ADD COLUMN upvotes INTEGER NOT NULL DEFAULT 0")

@@ -1,6 +1,7 @@
 use axum::{
     extract::{Path, State, Query},
     http::StatusCode,
+    response::IntoResponse,
     Json,
 };
 use serde::Deserialize;
@@ -54,7 +55,7 @@ pub async fn get_products(
         .filter_map(|(k, v)| if k == "tag" { Some(v) } else { None })
         .collect();
 
-    let products_db = sqlx::query_as::<_, ProductDb>("SELECT id, title, description, price, features, tags, thumbnail_url, photos, type, metadata FROM products")
+    let products_db = sqlx::query_as::<_, ProductDb>("SELECT id, title, description, price, features, tags, thumbnail_url, photos, type, metadata, file_path FROM products")
         .fetch_all(&pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
@@ -100,6 +101,7 @@ pub async fn get_products(
                 translations: product_translations,
                 type_name: db.type_name,
                 metadata: db.metadata.and_then(|m| serde_json::from_str(&m).ok()),
+                file_path: db.file_path,
             });
         }
     }
@@ -117,7 +119,7 @@ pub async fn get_product(
         }
     }
 
-    let db = sqlx::query_as::<_, ProductDb>("SELECT id, title, description, price, features, tags, thumbnail_url, photos, type, metadata FROM products WHERE id = ?")
+    let db = sqlx::query_as::<_, ProductDb>("SELECT id, title, description, price, features, tags, thumbnail_url, photos, type, metadata, file_path FROM products WHERE id = ?")
         .bind(&id)
         .fetch_optional(&pool)
         .await
@@ -154,6 +156,7 @@ pub async fn get_product(
                 translations,
                 type_name: db.type_name,
                 metadata: db.metadata.and_then(|m| serde_json::from_str(&m).ok()),
+                file_path: db.file_path,
             }))
         },
         None => Err((StatusCode::NOT_FOUND, "Product not found".to_string())),
@@ -185,13 +188,14 @@ pub async fn create_product(
     let metadata_str = payload.metadata.as_ref().and_then(|m| serde_json::to_string(m).ok());
     
     // Insert dormant fields as empty/0.0 to satisfy NOT NULL constraints
-    sqlx::query("INSERT INTO products (id, title, description, price, features, tags, thumbnail_url, photos, type, metadata) VALUES (?, '', '', 0.0, '[]', ?, ?, ?, ?, ?)")
+    sqlx::query("INSERT INTO products (id, title, description, price, features, tags, thumbnail_url, photos, type, metadata, file_path) VALUES (?, '', '', 0.0, '[]', ?, ?, ?, ?, ?, ?)")
         .bind(&id)
         .bind(&tags_json)
         .bind(&payload.thumbnail_url)
         .bind(&photos_json)
         .bind(&payload.type_name)
         .bind(&metadata_str)
+        .bind(&payload.file_path)
         .execute(&pool)
         .await
         .map_err(|e| {
@@ -234,6 +238,7 @@ pub async fn create_product(
         translations: response_translations,
         type_name: payload.type_name,
         metadata: payload.metadata,
+        file_path: payload.file_path,
     }))
 }
 
@@ -249,12 +254,13 @@ pub async fn update_product(
     let photos_json = serde_json::to_string(&payload.photos).unwrap_or_else(|_| "[]".to_string());
     let metadata_str = payload.metadata.as_ref().and_then(|m| serde_json::to_string(m).ok());
 
-    let result = sqlx::query("UPDATE products SET tags = ?, thumbnail_url = ?, photos = ?, type = ?, metadata = ? WHERE id = ?")
+    let result = sqlx::query("UPDATE products SET tags = ?, thumbnail_url = ?, photos = ?, type = ?, metadata = ?, file_path = ? WHERE id = ?")
         .bind(&tags_json)
         .bind(&payload.thumbnail_url)
         .bind(&photos_json)
         .bind(&payload.type_name)
         .bind(&metadata_str)
+        .bind(&payload.file_path)
         .bind(&id)
         .execute(&pool)
         .await
@@ -302,6 +308,7 @@ pub async fn update_product(
         translations: response_translations,
         type_name: payload.type_name,
         metadata: payload.metadata,
+        file_path: payload.file_path,
     }))
 }
 
@@ -324,4 +331,241 @@ pub async fn delete_product(
     }
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+pub struct DownloadParams {
+    pub token: String,
+}
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct DownloadClaims {
+    pub sub: String, // order_id
+    pub exp: usize,
+}
+
+pub async fn download_file(
+    State(pool): State<SqlitePool>,
+    Path(order_id): Path<String>,
+    Query(params): Query<DownloadParams>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    use jsonwebtoken::{decode, DecodingKey, Validation};
+    use std::env;
+
+    let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| "secret".to_string());
+    let token_data = decode::<DownloadClaims>(
+        &params.token,
+        &DecodingKey::from_secret(jwt_secret.as_bytes()),
+        &Validation::default(),
+    ).map_err(|e| (StatusCode::UNAUTHORIZED, format!("Invalid token: {}", e)))?;
+
+    if token_data.claims.sub != order_id {
+        return Err((StatusCode::UNAUTHORIZED, "Token and order do not match".to_string()));
+    }
+
+    let order = sqlx::query_as::<_, crate::models::OrderDb>(
+        "SELECT id, user_id, email, product_id, amount, currency, gateway, status, ref_id, created_at FROM orders WHERE id = ?"
+    )
+    .bind(&order_id)
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?
+    .ok_or((StatusCode::NOT_FOUND, "Order not found".to_string()))?;
+
+    if order.status != "completed" {
+        return Err((StatusCode::PAYMENT_REQUIRED, "Order is not completed".to_string()));
+    }
+
+    let product = sqlx::query_as::<_, crate::models::ProductDb>(
+        "SELECT id, title, description, price, features, tags, thumbnail_url, photos, type, metadata, file_path FROM products WHERE id = ?"
+    )
+    .bind(&order.product_id)
+    .fetch_optional(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?
+    .ok_or((StatusCode::NOT_FOUND, "Product not found".to_string()))?;
+
+    let file_path_str = product.file_path.ok_or((
+        StatusCode::INTERNAL_SERVER_ERROR,
+        "Product has no digital file assigned".to_string(),
+    ))?;
+
+    let secure_dir = std::path::Path::new("digital_products");
+    let target_path = secure_dir.join(&file_path_str);
+
+    let canonical_secure = secure_dir.canonicalize()
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("System error: {}", e)))?;
+    let canonical_target = target_path.canonicalize()
+        .map_err(|_| (StatusCode::NOT_FOUND, "File not found".to_string()))?;
+
+    if !canonical_target.starts_with(&canonical_secure) {
+        return Err((StatusCode::FORBIDDEN, "Access denied".to_string()));
+    }
+
+    let file = tokio::fs::File::open(&canonical_target).await
+        .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {}", e)))?;
+    let stream = tokio_util::io::ReaderStream::new(file);
+    let body = axum::body::Body::from_stream(stream);
+
+    let filename = canonical_target.file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("download.zip");
+
+    let disposition = format!("attachment; filename=\"{}\"", filename);
+    let mut response = body.into_response();
+    response.headers_mut().insert(
+        axum::http::header::CONTENT_TYPE,
+        axum::http::HeaderValue::from_static("application/octet-stream"),
+    );
+    response.headers_mut().insert(
+        axum::http::header::CONTENT_DISPOSITION,
+        axum::http::HeaderValue::from_str(&disposition)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Header error: {}", e)))?,
+    );
+
+    Ok(response)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use jsonwebtoken::{encode, EncodingKey, Header};
+    use sqlx::sqlite::SqlitePoolOptions;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    async fn setup_test_db() -> SqlitePool {
+        let pool = SqlitePoolOptions::new()
+            .connect("sqlite::memory:")
+            .await
+            .unwrap();
+
+        sqlx::query(
+            "CREATE TABLE users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL,
+                avatar_url TEXT NOT NULL,
+                email TEXT UNIQUE
+            )"
+        ).execute(&pool).await.unwrap();
+
+        sqlx::query(
+            "CREATE TABLE products (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                price REAL NOT NULL,
+                features TEXT NOT NULL,
+                tags TEXT NOT NULL,
+                thumbnail_url TEXT,
+                photos TEXT,
+                type TEXT DEFAULT 'latex',
+                metadata TEXT,
+                file_path TEXT
+            )"
+        ).execute(&pool).await.unwrap();
+
+        sqlx::query(
+            "CREATE TABLE orders (
+                id TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                email TEXT NOT NULL,
+                product_id TEXT NOT NULL,
+                amount REAL NOT NULL,
+                currency TEXT NOT NULL,
+                gateway TEXT NOT NULL,
+                status TEXT NOT NULL,
+                ref_id TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
+        ).execute(&pool).await.unwrap();
+
+        pool
+    }
+
+    #[tokio::test]
+    async fn test_download_file_valid() {
+        let pool = setup_test_db().await;
+        // Setup directories and test files
+        std::fs::create_dir_all("digital_products").unwrap();
+        std::fs::write("digital_products/test_product_file.zip", b"dummy content").unwrap();
+
+        // Insert test user, product, order
+        sqlx::query("INSERT INTO users (id, username, avatar_url, email) VALUES (1, 'testuser', 'avatar', 'test@example.com')")
+            .execute(&pool).await.unwrap();
+
+        sqlx::query("INSERT INTO products (id, title, description, price, features, tags, type, file_path) VALUES ('prod123', 'Test Title', 'Desc', 10.0, '[]', '[]', 'latex', 'test_product_file.zip')")
+            .execute(&pool).await.unwrap();
+
+        sqlx::query("INSERT INTO orders (id, user_id, email, product_id, amount, currency, gateway, status) VALUES ('order123', 1, 'test@example.com', 'prod123', 10.0, 'USD', 'crypto', 'completed')")
+            .execute(&pool).await.unwrap();
+
+        // Generate token
+        let exp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 3600;
+        let claims = DownloadClaims {
+            sub: "order123".to_string(),
+            exp,
+        };
+        let token = encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret("secret".as_bytes()),
+        ).unwrap();
+
+        unsafe { std::env::set_var("JWT_SECRET", "secret"); }
+
+        let res = download_file(
+            State(pool),
+            Path("order123".to_string()),
+            Query(DownloadParams { token }),
+        ).await;
+
+        assert!(res.is_ok());
+
+        // Clean up test file
+        let _ = std::fs::remove_file("digital_products/test_product_file.zip");
+    }
+
+    #[tokio::test]
+    async fn test_download_file_invalid_token() {
+        let pool = setup_test_db().await;
+        let res = download_file(
+            State(pool),
+            Path("order123".to_string()),
+            Query(DownloadParams { token: "invalid.token.here".to_string() }),
+        ).await;
+
+        assert!(res.is_err());
+        let (status, msg) = res.err().unwrap();
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert!(msg.contains("Invalid token"));
+    }
+
+    #[tokio::test]
+    async fn test_download_file_non_matching_token() {
+        let pool = setup_test_db().await;
+        // Generate token for different order
+        let exp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 3600;
+        let claims = DownloadClaims {
+            sub: "other_order".to_string(),
+            exp,
+        };
+        let token = encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret("secret".as_bytes()),
+        ).unwrap();
+
+        unsafe { std::env::set_var("JWT_SECRET", "secret"); }
+
+        let res = download_file(
+            State(pool),
+            Path("order123".to_string()),
+            Query(DownloadParams { token }),
+        ).await;
+
+        assert!(res.is_err());
+        let (status, msg) = res.err().unwrap();
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(msg, "Token and order do not match");
+    }
 }

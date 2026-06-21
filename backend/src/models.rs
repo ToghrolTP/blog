@@ -177,6 +177,8 @@ pub struct ProductResponse {
     #[serde(rename = "type", default = "default_type_name")]
     pub type_name: String,
     pub metadata: Option<serde_json::Value>,
+    #[serde(rename = "filePath")]
+    pub file_path: Option<String>,
 }
 
 #[derive(Debug, FromRow)]
@@ -192,6 +194,7 @@ pub struct ProductDb {
     #[sqlx(rename = "type")]
     pub type_name: String,
     pub metadata: Option<String>,
+    pub file_path: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -207,6 +210,8 @@ pub struct CreateProductRequest {
     #[serde(rename = "type", default = "default_type_name")]
     pub type_name: String,
     pub metadata: Option<serde_json::Value>,
+    #[serde(rename = "filePath")]
+    pub file_path: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -221,5 +226,21 @@ pub struct UpdateProductRequest {
     #[serde(rename = "type", default = "default_type_name")]
     pub type_name: String,
     pub metadata: Option<serde_json::Value>,
+    #[serde(rename = "filePath")]
+    pub file_path: Option<String>,
 }
 fn default_type_name() -> String { "latex".to_string() }
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, sqlx::FromRow)]
+pub struct OrderDb {
+    pub id: String,
+    pub user_id: i64,
+    pub email: String,
+    pub product_id: String,
+    pub amount: f64,
+    pub currency: String,
+    pub gateway: String,
+    pub status: String,
+    pub ref_id: Option<String>,
+    pub created_at: String,
+}
