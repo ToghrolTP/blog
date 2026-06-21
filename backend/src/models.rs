@@ -244,3 +244,16 @@ pub struct OrderDb {
     pub ref_id: Option<String>,
     pub created_at: String,
 }
+
+#[derive(Debug, serde::Deserialize)]
+pub struct CheckoutRequest {
+    #[serde(rename = "productId")]
+    pub product_id: String,
+    pub gateway: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct CheckoutResponse {
+    #[serde(rename = "redirectUrl")]
+    pub redirect_url: String,
+}

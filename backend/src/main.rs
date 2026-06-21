@@ -5,6 +5,7 @@ mod comments;
 mod upvotes;
 mod upload;
 mod products;
+mod payments;
 
 use axum::{routing::{get, post, put, delete}, Router};
 use dotenvy::dotenv;
@@ -96,6 +97,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/products", get(products::get_products).post(products::create_product))
         .route("/api/products/{id}", get(products::get_product).put(products::update_product).delete(products::delete_product))
         .route("/api/downloads/{order_id}", get(products::download_file))
+        .route("/api/orders/checkout", post(payments::checkout))
+        .route("/api/payments/verify/zarinpal", get(payments::verify_zarinpal))
+        .route("/api/payments/verify/crypto", post(payments::verify_crypto))
+        .route("/api/payments/verify/crypto/mock", get(payments::verify_crypto_mock))
+        .route("/api/orders/{order_id}/token", get(payments::get_order_token))
         .route("/", get(serve_seo_home))
         .route("/fa", get(serve_seo_home))
         .route("/fa/", get(serve_seo_home))
