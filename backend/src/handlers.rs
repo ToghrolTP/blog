@@ -237,16 +237,53 @@ pub async fn delete_post(
     Path(id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     check_auth(&headers)?;
-    
+
+    let mut tx = pool.begin().await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 1. Delete comment upvotes for this post's comments
+    sqlx::query(
+        "DELETE FROM comment_upvotes WHERE comment_id IN (SELECT id FROM comments WHERE post_id = ?)"
+    )
+    .bind(&id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 2. Delete comments
+    sqlx::query("DELETE FROM comments WHERE post_id = ?")
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 3. Delete post upvotes
+    sqlx::query("DELETE FROM post_upvotes WHERE post_id = ?")
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 4. Delete post translations
+    sqlx::query("DELETE FROM post_translations WHERE post_id = ?")
+        .bind(&id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 5. Delete the post itself
     let result = sqlx::query("DELETE FROM posts WHERE id = ?")
         .bind(&id)
-        .execute(&pool)
+        .execute(&mut *tx)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     if result.rows_affected() == 0 {
         return Err((StatusCode::NOT_FOUND, "Post not found".to_string()));
     }
+
+    tx.commit().await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(StatusCode::NO_CONTENT)
 }
