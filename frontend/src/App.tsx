@@ -9,6 +9,7 @@ import { PostDetail } from './components/PostDetail';
 import { AdminPanel } from './components/AdminPanel';
 import { Store } from './components/Store';
 import { ProductDetail } from './components/ProductDetail';
+import { About } from './components/About';
 import { TerminalWindowIcon } from './components/Icons';
 import { Post } from './types';
 import { UpvoteProvider } from './contexts/UpvoteContext';
@@ -269,7 +270,55 @@ function Home() {
 
   return (
     <div className="animate-in fade-in duration-700">
-      <SEO title={`${t('welcome_title') || 'Welcome'} | Log40`} />
+      <SEO title={`${t('welcome_title') || 'Welcome'} | Log40`}>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "@id": `${window.location.origin}/#organization`,
+            "name": "Log40",
+            "url": `${window.location.origin}/`,
+            "logo": `${window.location.origin}/favicon.png`,
+            "sameAs": [
+              "https://github.com/toghrol",
+              "https://linkedin.com/in/toghrol"
+            ]
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "@id": `${window.location.origin}/#website`,
+            "url": `${window.location.origin}/`,
+            "name": "Log40",
+            "description": "A personal blog sharing insights on software engineering, web development, and technology.",
+            "publisher": {
+              "@id": `${window.location.origin}/#organization`
+            },
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": `${window.location.origin}/?q={search_term_string}`
+              },
+              "query-input": "required name=search_term_string"
+            }
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Blog",
+            "@id": `${window.location.origin}/#blog`,
+            "name": "Log40 Blog",
+            "description": "A personal blog sharing insights on software engineering, web development, and technology.",
+            "publisher": {
+              "@id": `${window.location.origin}/#organization`
+            }
+          })}
+        </script>
+      </SEO>
       <div className="mb-16 font-mono text-gb-fg-dark border-l-4 border-gb-orange-light pl-6 py-2" dir={language === 'fa' ? 'rtl' : 'ltr'}>
         <p className="text-4xl font-bold text-gb-fg mb-4 tracking-tight rtl:tracking-normal">{t('welcome_title')}</p>
         <p className="text-lg leading-relaxed" dangerouslySetInnerHTML={{ __html: descHtml }}></p>
@@ -609,10 +658,12 @@ function AppContent() {
                   <Route path="/store" element={<Store />} />
                   <Route path="/store/product/:id" element={<ProductDetail />} />
                   <Route path="/post/:id" element={<PostDetail />} />
+                  <Route path="/about" element={<About />} />
                   <Route path="/fa" element={<Home />} />
                   <Route path="/fa/store" element={<Store />} />
                   <Route path="/fa/store/product/:id" element={<ProductDetail />} />
                   <Route path="/fa/post/:id" element={<PostDetail />} />
+                  <Route path="/fa/about" element={<About />} />
                   <Route path="/admin" element={<AdminPanel />} />
                 </Routes>
               </main>

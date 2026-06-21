@@ -237,7 +237,7 @@ pub async fn delete_post(
     Path(id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     check_auth(&headers)?;
-
+    
     let mut tx = pool.begin().await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
@@ -323,6 +323,18 @@ pub async fn sitemap_xml(
     // Persian Store
     xml.push_str(&format!(
         "  <url>\n    <loc>{}/fa/store</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>\n",
+        base_url
+    ));
+
+    // English About
+    xml.push_str(&format!(
+        "  <url>\n    <loc>{}/about</loc>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n",
+        base_url
+    ));
+
+    // Persian About
+    xml.push_str(&format!(
+        "  <url>\n    <loc>{}/fa/about</loc>\n    <changefreq>monthly</changefreq>\n    <priority>0.8</priority>\n  </url>\n",
         base_url
     ));
 

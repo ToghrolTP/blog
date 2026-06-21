@@ -64,6 +64,14 @@ export function Header() {
           )}
 
           <div className="h-px w-full md:w-px md:h-6 bg-gb-bg-soft hidden md:block"></div>
+          <Link 
+            to={language === 'fa' ? '/fa/about' : '/about'}
+            className="text-sm font-mono font-bold text-gb-fg-dark hover:text-gb-orange-light transition-colors"
+          >
+            {language === 'fa' ? 'درباره' : 'About'}
+          </Link>
+
+          <div className="h-px w-full md:w-px md:h-6 bg-gb-bg-soft hidden md:block"></div>
 
           <button 
             onClick={toggleLanguage}
