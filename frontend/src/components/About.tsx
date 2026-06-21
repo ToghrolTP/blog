@@ -23,18 +23,34 @@ export function About() {
             "@context": "https://schema.org",
             "@type": "Person",
             "@id": `${window.location.origin}/#person`,
-            name: "Toghrol",
-            url: "https://github.com/toghrol",
-            sameAs: ["https://linkedin.com/in/toghrol"],
-            jobTitle: "Systems & Rust Software Engineer",
-            description: description,
+            "name": "Toghrol",
+            "url": "https://github.com/toghrol",
+            "sameAs": [
+              "https://github.com/toghrol",
+              "https://www.linkedin.com/in/toghrol/"
+            ],
+            "jobTitle": "Systems & Rust Software Engineer",
+            "description": description,
+            "image": `${window.location.origin}/favicon.png`
           })}
         </script>
       </SEO>
 
-      <h1 className="text-3xl font-bold mb-8 text-gb-fg border-b border-gb-bg-soft pb-4">
-        {language === "fa" ? "درباره من" : "About Me"}
-      </h1>
+      <div className="flex flex-col md:flex-row items-center gap-6 mb-8 border-b border-gb-bg-soft pb-6">
+        <img 
+          src="/favicon.png" 
+          alt="Toghrol - Systems & Rust Software Engineer" 
+          className="w-24 h-24 rounded-full border-2 border-gb-orange-light bg-gb-bg-dark"
+        />
+        <div>
+          <h1 className="text-3xl font-bold text-gb-fg">
+            {language === "fa" ? "درباره من" : "About Me"}
+          </h1>
+          <p className="text-gb-fg-dark text-sm mt-1">
+            {language === "fa" ? "مهندس نرم‌افزار و سیستم‌ها" : "Systems & Rust Software Engineer"}
+          </p>
+        </div>
+      </div>
 
       <div className="space-y-6 leading-relaxed">
         <p>
@@ -94,12 +110,20 @@ export function About() {
         </h2>
         <div className="flex gap-4">
           <a
-            href="https://github.com/toghroltp"
+            href="https://github.com/toghrol"
             target="_blank"
             rel="noopener noreferrer"
             className="text-gb-aqua-light hover:underline"
           >
             GitHub
+          </a>
+          <a
+            href="https://www.linkedin.com/in/toghrol/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gb-aqua-light hover:underline"
+          >
+            LinkedIn
           </a>
         </div>
       </div>
