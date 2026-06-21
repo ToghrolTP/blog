@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Configuration
-DB_PATH="/home/toghrol/Documents/rust/blog/backend/db/blog.db"
-BACKUP_DIR="/home/toghrol/Documents/rust/blog/backend/backups"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DB_PATH="${SCRIPT_DIR}/db/blog.db"
+BACKUP_DIR="${SCRIPT_DIR}/backups"
 TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
 BACKUP_FILE="${BACKUP_DIR}/blog_backup_${TIMESTAMP}.db"
 
