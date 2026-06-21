@@ -147,7 +147,35 @@ export function PostDetail() {
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
+            "@type": "Person",
+            "@id": `${window.location.origin}/#person`,
+            "name": "Toghrol",
+            "url": "https://github.com/toghrol",
+            "sameAs": [
+              "https://github.com/toghrol",
+              "https://www.linkedin.com/in/toghrol/"
+            ]
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "@id": `${window.location.origin}/#organization`,
+            "name": "Log40",
+            "url": `${window.location.origin}/`,
+            "logo": `${window.location.origin}/favicon.png`,
+            "sameAs": [
+              "https://github.com/toghrol",
+              "https://www.linkedin.com/in/toghrol/"
+            ]
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
             "@type": "BlogPosting",
+            "@id": `${window.location.origin}${language === 'fa' ? '/fa' : ''}/post/${post.id}#blogposting`,
             "headline": currentTranslation.title,
             "description": excerpt,
             "url": `${window.location.origin}${language === 'fa' ? '/fa' : ''}/post/${post.id}`,
@@ -155,22 +183,14 @@ export function PostDetail() {
               "@type": "WebPage",
               "@id": `${window.location.origin}${language === 'fa' ? '/fa' : ''}/post/${post.id}`
             },
-            "image": post.thumbnailUrl ? [post.thumbnailUrl] : [],
+            "image": post.thumbnailUrl ? [post.thumbnailUrl.startsWith('/') ? `${window.location.origin}${post.thumbnailUrl}` : post.thumbnailUrl] : [],
             "datePublished": post.date,
             "dateModified": post.date,
-            "author": [{
-              "@type": "Person",
-              "name": "Toghrol",
-              "url": "https://github.com/toghrol"
-            }],
+            "author": {
+              "@id": `${window.location.origin}/#person`
+            },
             "publisher": {
-              "@type": "Organization",
-              "name": "Log40",
-              "url": window.location.origin,
-              "logo": {
-                "@type": "ImageObject",
-                "url": `${window.location.origin}/favicon.png`
-              }
+              "@id": `${window.location.origin}/#organization`
             }
           })}
         </script>
