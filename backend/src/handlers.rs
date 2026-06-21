@@ -384,7 +384,14 @@ pub async fn robots_txt() -> (axum::http::HeaderMap, String) {
     headers.insert(axum::http::header::CONTENT_TYPE, "text/plain".parse().unwrap());
     
     let content = format!(
-        "User-agent: *\nDisallow: /admin\nAllow: /\n\nSitemap: {}/sitemap.xml\n",
+        "User-agent: *\nDisallow: /admin\nAllow: /\n\n\
+         User-agent: GPTBot\nAllow: /\n\n\
+         User-agent: PerplexityBot\nAllow: /\n\n\
+         User-agent: ClaudeBot\nAllow: /\n\n\
+         User-agent: Googlebot-Image\nAllow: /\n\n\
+         User-agent: Bingbot\nAllow: /\n\n\
+         User-agent: OAI-SearchBot\nAllow: /\n\n\
+         Sitemap: {}/sitemap.xml\n",
         base_url
     );
     
