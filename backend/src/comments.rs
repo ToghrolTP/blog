@@ -7,39 +7,42 @@ use axum_extra::extract::cookie::CookieJar;
 use sqlx::SqlitePool;
 
 use crate::auth::get_user_from_jar;
-use crate::models::{CommentDb, CommentResponse, CreateCommentRequest, User};
+use crate::models::{CommentAndUserDb, CommentDb, CommentResponse, CreateCommentRequest, User};
 
 pub async fn get_comments(
     State(pool): State<SqlitePool>,
     Path(post_id): Path<String>,
 ) -> Result<Json<Vec<CommentResponse>>, (StatusCode, String)> {
-    let comments_db = sqlx::query_as::<_, CommentDb>(
-        "SELECT * FROM comments WHERE post_id = ? ORDER BY upvotes DESC, created_at DESC"
+    let comments_db = sqlx::query_as::<_, CommentAndUserDb>(
+        "SELECT c.id, c.post_id, c.parent_id, c.content, c.created_at, c.upvotes, \
+         c.user_id, u.username, u.avatar_url, u.email \
+         FROM comments c \
+         INNER JOIN users u ON c.user_id = u.id \
+         WHERE c.post_id = ? \
+         ORDER BY c.upvotes DESC, c.created_at DESC"
     )
     .bind(&post_id)
     .fetch_all(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let mut response = Vec::new();
-
-    for c in comments_db {
-        let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = ?")
-            .bind(c.user_id)
-            .fetch_one(&pool)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-        response.push(CommentResponse {
+    let response = comments_db
+        .into_iter()
+        .map(|c| CommentResponse {
             id: c.id,
             post_id: c.post_id,
             parent_id: c.parent_id,
             content: c.content,
             created_at: c.created_at,
-            user,
+            user: User {
+                id: c.user_id,
+                username: c.username,
+                avatar_url: c.avatar_url,
+                email: c.email,
+            },
             upvotes: c.upvotes as i32,
-        });
-    }
+        })
+        .collect();
 
     Ok(Json(response))
 }
@@ -115,32 +118,34 @@ pub async fn get_all_comments_admin(
 ) -> Result<Json<Vec<CommentResponse>>, (StatusCode, String)> {
     crate::handlers::check_auth(&headers)?;
 
-    let comments_db = sqlx::query_as::<_, CommentDb>(
-        "SELECT * FROM comments ORDER BY created_at DESC"
+    let comments_db = sqlx::query_as::<_, CommentAndUserDb>(
+        "SELECT c.id, c.post_id, c.parent_id, c.content, c.created_at, c.upvotes, \
+         c.user_id, u.username, u.avatar_url, u.email \
+         FROM comments c \
+         INNER JOIN users u ON c.user_id = u.id \
+         ORDER BY c.created_at DESC"
     )
     .fetch_all(&pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let mut response = Vec::new();
-
-    for c in comments_db {
-        let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = ?")
-            .bind(c.user_id)
-            .fetch_one(&pool)
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-        response.push(CommentResponse {
+    let response = comments_db
+        .into_iter()
+        .map(|c| CommentResponse {
             id: c.id,
             post_id: c.post_id,
             parent_id: c.parent_id,
             content: c.content,
             created_at: c.created_at,
-            user,
+            user: User {
+                id: c.user_id,
+                username: c.username,
+                avatar_url: c.avatar_url,
+                email: c.email,
+            },
             upvotes: c.upvotes as i32,
-        });
-    }
+        })
+        .collect();
 
     Ok(Json(response))
 }

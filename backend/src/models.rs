@@ -105,6 +105,20 @@ pub struct CommentDb {
     pub upvotes: i64,
 }
 
+#[derive(Debug, FromRow)]
+pub struct CommentAndUserDb {
+    pub id: i64,
+    pub post_id: String,
+    pub parent_id: Option<i64>,
+    pub content: String,
+    pub created_at: String,
+    pub upvotes: i64,
+    pub user_id: i64,
+    pub username: String,
+    pub avatar_url: String,
+    pub email: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CommentResponse {
     pub id: i64,
