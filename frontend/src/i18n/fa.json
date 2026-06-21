@@ -94,5 +94,21 @@
   "login_error_invalid": "رمز اشتباهه، دوباره امتحان کن (نفس عمیق یادت نره)",
   "login_error_failed": "مشکلی تو احراز هویت بوجود اومد. دوباره امتحان کن.",
   "auth_submit": "ورود / عضویت",
-  "username_label_optional": "یوزرنیم (اختیاری)"
+  "username_label_optional": "نام کاربری (اختیاری)",
+  "checkout_title": "تسویه حساب",
+  "checkout_user_email": "نشانی ایمیل حساب کاربری",
+  "checkout_product": "محصول",
+  "checkout_payment_method": "روش پرداخت",
+  "checkout_pay_toman": "پرداخت با تومان (زرین‌پال)",
+  "checkout_pay_toman_sub": "کارت‌های شتاب و درگاه‌های مستقیم",
+  "checkout_pay_crypto": "پرداخت با رمزارز (NOWPayments)",
+  "checkout_pay_crypto_sub": "بیت‌کوین، اتریوم، تتر و سایر رمزارزها",
+  "checkout_submit": "انتقال به درگاه پرداخت",
+  "checkout_verifying": "در حال بررسی وضعیت پرداخت...",
+  "checkout_success_title": "پرداخت با موفقیت انجام شد!",
+  "checkout_success_desc": "با تشکر از خرید شما. فایل دیجیتالی شما آماده دانلود است.",
+  "checkout_download_btn": "دانلود فایل",
+  "checkout_fail_title": "پرداخت ناموفق بود",
+  "checkout_fail_desc": "تراکنش لغو شد یا تایید پرداخت با خطا مواجه گردید. لطفاً دوباره تلاش کنید.",
+  "checkout_back_store": "بازگشت به فروشگاه"
 }

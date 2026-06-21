@@ -439,3 +439,33 @@ export function LoaderIcon({ size, ...props }: IconProps) {
     </svg>
   );
 }
+
+export function CheckCircleIcon({ size, ...props }: IconProps) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width={size || "1em"} 
+      height={size || "1em"} 
+      viewBox="0 0 256 256" 
+      fill="currentColor" 
+      {...props}
+    >
+      <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm45.66-117.66a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z"/>
+    </svg>
+  );
+}
+
+export function XCircleIcon({ size, ...props }: IconProps) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width={size || "1em"} 
+      height={size || "1em"} 
+      viewBox="0 0 256 256" 
+      fill="currentColor" 
+      {...props}
+    >
+      <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm40-128a8,8,0,0,1,0,11.32L139.31,128l28.69,28.69a8,8,0,1,1-11.32,11.32L128,139.31l-28.69,28.69a8,8,0,0,1-11.32-11.32L116.69,128,88,99.31a8,8,0,0,1,11.32-11.32L128,116.69l28.69-28.69A8,8,0,0,1,168,88Z"/>
+    </svg>
+  );
+}

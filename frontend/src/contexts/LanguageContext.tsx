@@ -26,12 +26,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   }, [language]);
 
   const toggleLanguage = () => {
+    const search = location.search;
     if (language === 'en') {
-      navigate('/fa' + (location.pathname === '/' ? '' : location.pathname));
+      navigate('/fa' + (location.pathname === '/' ? '' : location.pathname) + search);
     } else {
       let newPath = location.pathname.replace(/^\/fa/, '');
       if (newPath === '') newPath = '/';
-      navigate(newPath);
+      navigate(newPath + search);
     }
   };
 

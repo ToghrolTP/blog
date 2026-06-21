@@ -21,7 +21,9 @@ export interface User {
   id: number;
   username: string;
   avatar_url: string;
+  email?: string;
 }
+
 
 export interface Comment {
   id: number;

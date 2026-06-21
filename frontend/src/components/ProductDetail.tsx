@@ -7,6 +7,8 @@ import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
 import { ShoppingCartIcon, CheckIcon, ArrowLeftIcon, LoaderIcon, WrenchIcon } from "./Icons";
 import { Product } from "../types";
+import { useAuth } from "../contexts/AuthContext";
+import { CheckoutModal } from "./CheckoutModal";
 
 function ImageZoom({ src, alt }: { src: string; alt: string }) {
   const [position, setPosition] = useState('50% 50%');
@@ -40,7 +42,8 @@ export function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
   const [activeImage, setActiveImage] = useState<string | null>(null);
-  const [isPurchasing, setIsPurchasing] = useState(false);
+  const { user, login } = useAuth();
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   useEffect(() => {
     const adminSecret = localStorage.getItem('adminSecret');
@@ -271,22 +274,25 @@ export function ProductDetail() {
           )}
 
           <Button 
-            className="w-full mt-auto py-6 text-lg gap-3 bg-gb-orange-light text-gb-bg font-mono font-bold transition-all border-2 border-transparent hover:border-gb-orange-light/20 active:translate-y-1 active:translate-x-1 hover:-translate-y-0.5 hover:-translate-x-0.5 shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] hover:shadow-[6px_6px_0_0_rgba(0,0,0,0.4)] active:shadow-[0px_0px_0_0_rgba(0,0,0,0.4)] focus:ring-2 focus:ring-offset-2 focus:ring-offset-gb-bg focus:ring-gb-orange-light disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:translate-x-0 disabled:hover:shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] disabled:active:translate-y-0 disabled:active:translate-x-0"
-            disabled={isPurchasing}
+            className="w-full mt-auto py-6 text-lg gap-3 bg-gb-orange-light text-gb-bg font-mono font-bold transition-all border-2 border-transparent hover:border-gb-orange-light/20 active:translate-y-1 active:translate-x-1 hover:-translate-y-0.5 hover:-translate-x-0.5 shadow-[4px_4px_0_0_rgba(0,0,0,0.3)] hover:shadow-[6px_6px_0_0_rgba(0,0,0,0.4)] active:shadow-[0px_0px_0_0_rgba(0,0,0,0.4)] focus:ring-2 focus:ring-offset-2 focus:ring-offset-gb-bg focus:ring-gb-orange-light disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:translate-x-0"
             onClick={() => {
-              setIsPurchasing(true);
-              setTimeout(() => setIsPurchasing(false), 2000);
+              if (!user) {
+                login();
+              } else {
+                setIsCheckoutOpen(true);
+              }
             }}
           >
-            {isPurchasing ? (
-              <LoaderIcon className="w-6 h-6 animate-spin" />
-            ) : (
-              <ShoppingCartIcon className="w-6 h-6" />
-            )}
-            {isPurchasing ? t("mounting") : t("purchase_now")}
+            <ShoppingCartIcon className="w-6 h-6" />
+            {t("purchase_now")}
           </Button>
         </div>
       </div>
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        product={product}
+      />
     </div>
   );
 }

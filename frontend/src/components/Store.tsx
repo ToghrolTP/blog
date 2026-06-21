@@ -5,7 +5,14 @@ import { SEO } from "./SEO";
 import { Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
-import { ShoppingCartIcon, CheckIcon, SearchIcon, XIcon, SlidersHorizontalIcon, WrenchIcon } from "./Icons";
+import {
+  ShoppingCartIcon,
+  CheckIcon,
+  SearchIcon,
+  XIcon,
+  SlidersHorizontalIcon,
+  WrenchIcon,
+} from "./Icons";
 import { Link } from "react-router-dom";
 import { Product } from "../types";
 import { CategoryButton } from "./ui/CategoryButton";
@@ -19,23 +26,30 @@ export function Store() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
-  const [sortBy, setSortBy] = useState<'none' | 'low-high' | 'high-low'>('none');
-  const [formatFilter, setFormatFilter] = useState<'all' | 'pdf' | 'latex' | 'zip'>('all');
+  const [sortBy, setSortBy] = useState<"none" | "low-high" | "high-low">(
+    "none",
+  );
+  const [formatFilter, setFormatFilter] = useState<
+    "all" | "pdf" | "latex" | "zip"
+  >("all");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const getCategoryCountText = (type: string) => {
     const count = products.filter((p) => p.type === type).length;
-    if (language === 'fa') {
-      return `${new Intl.NumberFormat('fa-IR').format(count)} محصول`;
+    if (language === "fa") {
+      return `${new Intl.NumberFormat("fa-IR").format(count)} محصول`;
     }
-    return `${count} ${count === 1 ? 'product' : 'products'}`;
+    return `${count} ${count === 1 ? "product" : "products"}`;
   };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (filterRef.current && !filterRef.current.contains(event.target as Node)) {
+      if (
+        filterRef.current &&
+        !filterRef.current.contains(event.target as Node)
+      ) {
         setIsFilterOpen(false);
       }
     }
@@ -44,13 +58,14 @@ export function Store() {
   }, []);
 
   useEffect(() => {
-    const adminSecret = localStorage.getItem('adminSecret');
-    const isParamAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+    const adminSecret = localStorage.getItem("adminSecret");
+    const isParamAdmin =
+      new URLSearchParams(window.location.search).get("admin") === "true";
     const isAdmin = !!adminSecret || isParamAdmin;
 
     const headers: HeadersInit = {};
     if (adminSecret) {
-      headers['Authorization'] = `Bearer ${adminSecret}`;
+      headers["Authorization"] = `Bearer ${adminSecret}`;
     }
 
     fetch("/api/settings")
@@ -104,11 +119,12 @@ export function Store() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeElement = document.activeElement;
-      if (activeElement && (
-        activeElement.tagName === "INPUT" ||
-        activeElement.tagName === "TEXTAREA" ||
-        activeElement.hasAttribute("contenteditable")
-      )) {
+      if (
+        activeElement &&
+        (activeElement.tagName === "INPUT" ||
+          activeElement.tagName === "TEXTAREA" ||
+          activeElement.hasAttribute("contenteditable"))
+      ) {
         return;
       }
 
@@ -154,7 +170,7 @@ export function Store() {
     if (!matchTag) return false;
 
     // 2. Format filter
-    if (formatFilter !== 'all') {
+    if (formatFilter !== "all") {
       const format = product.metadata?.format?.toLowerCase();
       if (format !== formatFilter) return false;
     }
@@ -164,30 +180,47 @@ export function Store() {
 
     const query = debouncedQuery.toLowerCase().trim();
 
-    const translation = product.translations?.find((t) => t.language === language)
-      || product.translations?.find((t) => t.language === "en")
-      || { title: "", description: "", features: [] };
+    const translation = product.translations?.find(
+      (t) => t.language === language,
+    ) ||
+      product.translations?.find((t) => t.language === "en") || {
+        title: "",
+        description: "",
+        features: [],
+      };
 
-    const matchesTitle = (translation.title || "").toLowerCase().includes(query);
-    const matchesDescription = (translation.description || "").toLowerCase().includes(query);
-    const matchesFeatures = (translation.features || []).some((f) => f.toLowerCase().includes(query));
-    const matchesTags = (product.tags || []).some((tag) => tag.toLowerCase().includes(query));
+    const matchesTitle = (translation.title || "")
+      .toLowerCase()
+      .includes(query);
+    const matchesDescription = (translation.description || "")
+      .toLowerCase()
+      .includes(query);
+    const matchesFeatures = (translation.features || []).some((f) =>
+      f.toLowerCase().includes(query),
+    );
+    const matchesTags = (product.tags || []).some((tag) =>
+      tag.toLowerCase().includes(query),
+    );
     const matchesId = (product.id || "").toLowerCase().includes(query);
 
-    return matchesTitle || matchesDescription || matchesFeatures || matchesTags || matchesId;
+    return (
+      matchesTitle ||
+      matchesDescription ||
+      matchesFeatures ||
+      matchesTags ||
+      matchesId
+    );
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === 'none') return 0;
-    
-    const transA = a.translations?.find(t => t.language === language)
-      || a.translations?.find(t => t.language === 'en')
-      || { price: 0 };
-    const transB = b.translations?.find(t => t.language === language)
-      || b.translations?.find(t => t.language === 'en')
-      || { price: 0 };
+    if (sortBy === "none") return 0;
 
-    if (sortBy === 'low-high') {
+    const transA = a.translations?.find((t) => t.language === language) ||
+      a.translations?.find((t) => t.language === "en") || { price: 0 };
+    const transB = b.translations?.find((t) => t.language === language) ||
+      b.translations?.find((t) => t.language === "en") || { price: 0 };
+
+    if (sortBy === "low-high") {
       return transA.price - transB.price;
     }
     return transB.price - transA.price;
@@ -213,7 +246,7 @@ export function Store() {
         const activeTags = new Set(
           products
             .filter((p) => !nextType || p.type === nextType)
-            .flatMap((p) => p.tags)
+            .flatMap((p) => p.tags),
         );
         if (!activeTags.has(selectedTag)) {
           setSelectedTag(null);
@@ -221,7 +254,10 @@ export function Store() {
       }
       if (nextType) {
         setTimeout(() => {
-          filterRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          filterRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
         }, 100);
       }
     });
@@ -234,18 +270,21 @@ export function Store() {
           <div className="text-gb-red-light text-5xl mb-6 flex justify-center animate-pixel-float">
             <WrenchIcon size={48} />
           </div>
-          
+
           <h1 className="text-2xl font-bold text-gb-fg mb-4 border-b border-gb-bg-soft pb-4">
             {t("store_maintenance_title")}
           </h1>
-          
+
           <p className="text-sm text-gb-fg-dark leading-relaxed mb-6">
             {t("store_maintenance_desc")}
           </p>
-          
+
           <div className="flex justify-center">
             <Link to={language === "fa" ? "/fa" : "/"}>
-              <Button variant="ghost" className="text-xs border border-gb-bg-soft hover:border-gb-orange-light text-gb-fg-dark hover:text-gb-orange-light font-mono flex items-center gap-2 cursor-pointer transition-all duration-200">
+              <Button
+                variant="ghost"
+                className="text-xs border border-gb-bg-soft hover:border-gb-orange-light text-gb-fg-dark hover:text-gb-orange-light font-mono flex items-center gap-2 cursor-pointer transition-all duration-200"
+              >
                 &larr; {language === "fa" ? "بازگشت به خانه" : "Back to Home"}
               </Button>
             </Link>
@@ -274,7 +313,10 @@ export function Store() {
       </div>
 
       {/* Search & Filter Container */}
-      <div className="mb-12 flex items-center gap-3 max-w-xl relative" ref={filterRef}>
+      <div
+        className="mb-12 flex items-center gap-3 max-w-xl relative"
+        ref={filterRef}
+      >
         <div className="relative flex-1 flex items-center">
           <span className="absolute start-3 text-gb-fg-dark/60">
             <SearchIcon size={18} />
@@ -313,80 +355,86 @@ export function Store() {
           <button
             onClick={() => setIsFilterOpen(!isFilterOpen)}
             className={`flex items-center gap-2 px-4 py-3 font-mono text-sm border-2 rounded transition-all cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-gb-orange-light focus:ring-offset-2 focus:ring-offset-gb-bg ${
-              isFilterOpen || sortBy !== 'none' || formatFilter !== 'all'
-                ? 'bg-gb-orange-light text-gb-bg border-gb-orange-light shadow-[0_0_10px_rgba(254,128,25,0.25)] font-bold'
-                : 'bg-gb-bg-soft/20 text-gb-fg border-gb-bg-soft hover:border-gb-orange-light/40 hover:bg-gb-bg-soft/30'
+              isFilterOpen || sortBy !== "none" || formatFilter !== "all"
+                ? "bg-gb-orange-light text-gb-bg border-gb-orange-light shadow-[0_0_10px_rgba(254,128,25,0.25)] font-bold"
+                : "bg-gb-bg-soft/20 text-gb-fg border-gb-bg-soft hover:border-gb-orange-light/40 hover:bg-gb-bg-soft/30"
             }`}
             title="Filter products"
           >
             <SlidersHorizontalIcon size={18} />
-            <span className="hidden sm:inline">{t('filters')}</span>
-            {(sortBy !== 'none' || formatFilter !== 'all') && (
+            <span className="hidden sm:inline">{t("filters")}</span>
+            {(sortBy !== "none" || formatFilter !== "all") && (
               <span className="w-2.5 h-2.5 rounded-full bg-current border border-gb-bg-soft" />
             )}
           </button>
 
           {isFilterOpen && (
-            <div className={`absolute ${language === 'fa' ? 'left-0 origin-top-left' : 'right-0 origin-top-right'} mt-2 w-64 bg-gb-bg border-2 border-gb-bg-soft shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-4 z-40 font-mono text-xs rounded transition-all animate-in fade-in slide-in-from-top-2 duration-200`}>
+            <div
+              className={`absolute ${language === "fa" ? "left-0 origin-top-left" : "right-0 origin-top-right"} mt-2 w-64 bg-gb-bg border-2 border-gb-bg-soft shadow-[0_10px_25px_rgba(0,0,0,0.5)] p-4 z-40 font-mono text-xs rounded transition-all animate-in fade-in slide-in-from-top-2 duration-200`}
+            >
               {/* Sort By section */}
               <div className="mb-4">
-                <div className="text-gb-orange-light font-bold mb-2 uppercase tracking-wider">{t('sort_by')}</div>
+                <div className="text-gb-orange-light font-bold mb-2 uppercase tracking-wider">
+                  {t("sort_by")}
+                </div>
                 <div className="flex flex-col gap-1.5">
                   <button
-                    onClick={() => setSortBy('none')}
+                    onClick={() => setSortBy("none")}
                     className={`text-start w-full px-2.5 py-1.5 rounded transition-all cursor-pointer ${
-                      sortBy === 'none'
-                        ? 'bg-gb-orange-light/10 text-gb-orange-light font-bold border-l-2 border-gb-orange-light'
-                        : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
+                      sortBy === "none"
+                        ? "bg-gb-orange-light/10 text-gb-orange-light font-bold border-l-2 border-gb-orange-light"
+                        : "hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent"
                     }`}
-                    dir={language === 'fa' ? 'rtl' : 'ltr'}
+                    dir={language === "fa" ? "rtl" : "ltr"}
                   >
-                    {t('all')}
+                    {t("all")}
                   </button>
                   <button
-                    onClick={() => setSortBy('low-high')}
+                    onClick={() => setSortBy("low-high")}
                     className={`text-start w-full px-2.5 py-1.5 rounded transition-all cursor-pointer ${
-                      sortBy === 'low-high'
-                        ? 'bg-gb-orange-light/10 text-gb-orange-light font-bold border-l-2 border-gb-orange-light'
-                        : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
+                      sortBy === "low-high"
+                        ? "bg-gb-orange-light/10 text-gb-orange-light font-bold border-l-2 border-gb-orange-light"
+                        : "hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent"
                     }`}
-                    dir={language === 'fa' ? 'rtl' : 'ltr'}
+                    dir={language === "fa" ? "rtl" : "ltr"}
                   >
-                    {t('price_low_high')}
+                    {t("price_low_high")}
                   </button>
                   <button
-                    onClick={() => setSortBy('high-low')}
+                    onClick={() => setSortBy("high-low")}
                     className={`text-start w-full px-2.5 py-1.5 rounded transition-all cursor-pointer ${
-                      sortBy === 'high-low'
-                        ? 'bg-gb-orange-light/10 text-gb-orange-light font-bold border-l-2 border-gb-orange-light'
-                        : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
+                      sortBy === "high-low"
+                        ? "bg-gb-orange-light/10 text-gb-orange-light font-bold border-l-2 border-gb-orange-light"
+                        : "hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent"
                     }`}
-                    dir={language === 'fa' ? 'rtl' : 'ltr'}
+                    dir={language === "fa" ? "rtl" : "ltr"}
                   >
-                    {t('price_high_low')}
+                    {t("price_high_low")}
                   </button>
                 </div>
               </div>
 
               {/* Format Filter section */}
               <div>
-                <div className="text-gb-orange-light font-bold mb-2 uppercase tracking-wider">{t('format')}</div>
+                <div className="text-gb-orange-light font-bold mb-2 uppercase tracking-wider">
+                  {t("format")}
+                </div>
                 <div className="flex flex-col gap-1.5">
-                  {(['all', 'pdf', 'latex', 'zip'] as const).map((option) => (
+                  {(["all", "pdf", "latex", "zip"] as const).map((option) => (
                     <button
                       key={option}
                       onClick={() => setFormatFilter(option)}
                       className={`text-start w-full px-2.5 py-1.5 rounded transition-all cursor-pointer ${
                         formatFilter === option
-                          ? 'bg-gb-orange-light/10 text-gb-orange-light font-bold border-l-2 border-gb-orange-light'
-                          : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
+                          ? "bg-gb-orange-light/10 text-gb-orange-light font-bold border-l-2 border-gb-orange-light"
+                          : "hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent"
                       }`}
-                      dir={language === 'fa' ? 'rtl' : 'ltr'}
+                      dir={language === "fa" ? "rtl" : "ltr"}
                     >
-                      {option === 'all' && t('all')}
-                      {option === 'pdf' && t('pdf_format')}
-                      {option === 'latex' && t('latex_format')}
-                      {option === 'zip' && t('zip_format')}
+                      {option === "all" && t("all")}
+                      {option === "pdf" && t("pdf_format")}
+                      {option === "latex" && t("latex_format")}
+                      {option === "zip" && t("zip_format")}
                     </button>
                   ))}
                 </div>
@@ -399,10 +447,10 @@ export function Store() {
       {/* Banners Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
         <CategoryButton
-          active={selectedType === 'book'}
-          dimmed={selectedType !== null && selectedType !== 'book'}
-          postCountText={getCategoryCountText('book')}
-          onClick={() => handleTypeToggle('book')}
+          active={selectedType === "book"}
+          dimmed={selectedType !== null && selectedType !== "book"}
+          postCountText={getCategoryCountText("book")}
+          onClick={() => handleTypeToggle("book")}
           disabled={loading}
           imgSrc="/book-pixel-art.png"
           imgAlt="Book Banner"
@@ -410,12 +458,12 @@ export function Store() {
           themeColor="orange"
         />
         <CategoryButton
-          active={selectedType === 'latex'}
-          dimmed={selectedType !== null && selectedType !== 'latex'}
-          postCountText={getCategoryCountText('latex')}
-          onClick={() => handleTypeToggle('latex')}
+          active={selectedType === "latex"}
+          dimmed={selectedType !== null && selectedType !== "latex"}
+          postCountText={getCategoryCountText("latex")}
+          onClick={() => handleTypeToggle("latex")}
           disabled={loading}
-          imgSrc="/latex-pixel-art.svg"
+          imgSrc="/latex-pixel-art.png"
           imgAlt="LaTeX Banner"
           label={t("latex_cat")}
           themeColor="orange"
@@ -443,7 +491,11 @@ export function Store() {
                 return (
                   <li key={tag} className="shrink-0">
                     <button
-                      onClick={() => updateStateWithTransition(() => setSelectedTag(isActive ? null : tag))}
+                      onClick={() =>
+                        updateStateWithTransition(() =>
+                          setSelectedTag(isActive ? null : tag),
+                        )
+                      }
                       className={`flex items-center justify-between w-full text-left px-3 py-2 rounded transition-all font-mono text-sm group ${
                         isActive
                           ? "bg-gb-orange-light/10 text-gb-orange-light border-l-2 border-gb-orange-light shadow-[inset_2px_0_0_0_rgba(255,160,102,0.2)]"
@@ -467,7 +519,10 @@ export function Store() {
               })}
             </ul>
           ) : (
-            <p className="text-sm font-mono text-gb-fg-dark" dir={language === "fa" ? "rtl" : "ltr"}>
+            <p
+              className="text-sm font-mono text-gb-fg-dark"
+              dir={language === "fa" ? "rtl" : "ltr"}
+            >
               {t("no_categories")}
             </p>
           )}
@@ -482,113 +537,138 @@ export function Store() {
           ) : sortedProducts.length > 0 ? (
             <div className="columns-1 xl:columns-2 gap-6 space-y-6 product-list">
               {sortedProducts.map((product) => {
-                const translation = product.translations?.find(t => t.language === language) 
-                  || product.translations?.find(t => t.language === 'en')
-                  || { title: 'Untitled', description: '', features: [], price: 0 };
+                const translation = product.translations?.find(
+                  (t) => t.language === language,
+                ) ||
+                  product.translations?.find((t) => t.language === "en") || {
+                    title: "Untitled",
+                    description: "",
+                    features: [],
+                    price: 0,
+                  };
                 return (
-                <div key={product.id} className="product-card product-item break-inside-avoid">
-                  <Link
-                    to={
-                      language === "fa"
-                        ? `/fa/store/product/${product.id}`
-                        : `/store/product/${product.id}`
-                    }
-                    className="block h-full"
+                  <div
+                    key={product.id}
+                    className="product-card product-item break-inside-avoid"
                   >
-                    <Card className="relative h-full flex flex-col bg-gb-bg-soft/5 overflow-hidden group/card border-gb-bg-soft/50 hover:border-gb-orange-light/50 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl cursor-pointer !p-0 !md:p-0">
-                      {product.thumbnailUrl ? (
-                        <div className="relative w-full overflow-hidden shrink-0">
-                          <img src={product.thumbnailUrl} alt={translation.title} className="w-full h-auto transition-transform duration-700 group-hover/card:scale-105" />
-                        </div>
-                      ) : (
-                        <div className="relative aspect-video w-full bg-gb-bg-soft/30 flex items-center justify-center overflow-hidden shrink-0">
-                          <div className="absolute inset-0 opacity-20 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]" />
-                          <span className="text-gb-fg-dark/50 font-mono relative z-10 uppercase tracking-widest">{t('preview')}</span>
-                        </div>
-                      )}
+                    <Link
+                      to={
+                        language === "fa"
+                          ? `/fa/store/product/${product.id}`
+                          : `/store/product/${product.id}`
+                      }
+                      className="block h-full"
+                    >
+                      <Card className="relative h-full flex flex-col bg-gb-bg-soft/5 overflow-hidden group/card border-gb-bg-soft/50 hover:border-gb-orange-light/50 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-2xl cursor-pointer !p-0 !md:p-0">
+                        {product.thumbnailUrl ? (
+                          <div className="relative w-full overflow-hidden shrink-0">
+                            <img
+                              src={product.thumbnailUrl}
+                              alt={translation.title}
+                              className="w-full h-auto transition-transform duration-700 group-hover/card:scale-105"
+                            />
+                          </div>
+                        ) : (
+                          <div className="relative aspect-video w-full bg-gb-bg-soft/30 flex items-center justify-center overflow-hidden shrink-0">
+                            <div className="absolute inset-0 opacity-20 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:20px_20px]" />
+                            <span className="text-gb-fg-dark/50 font-mono relative z-10 uppercase tracking-widest">
+                              {t("preview")}
+                            </span>
+                          </div>
+                        )}
 
-                      {/* Premium Price Tag */}
-                      <div className="absolute top-4 right-4 z-20 transition-transform duration-300 group-hover/card:scale-105 group-hover/card:rotate-2 origin-top-right" dir={language === "fa" ? "rtl" : "ltr"}>
-                        <span className="bg-gb-orange-light text-black font-extrabold font-mono px-3 py-1.5 rounded-sm text-sm shadow-[4px_4px_0_0_rgba(0,0,0,0.2)] product-price">
-                          {language === "fa" ? `${new Intl.NumberFormat('fa-IR').format(translation.price)} تومان` : `$${translation.price}`}
-                        </span>
-                      </div>
-
-                      <div
-                        className="flex flex-col flex-1 p-6 relative z-20"
-                        dir={language === "fa" ? "rtl" : "ltr"}
-                      >
-                        <h3 className="text-xl font-bold text-gb-fg mb-2 group-hover/card:text-gb-orange-light transition-colors duration-200 product-title">
-                          {translation.title}
-                        </h3>
-                        <p className="text-gb-fg-dark text-sm leading-relaxed mb-6 line-clamp-2 product-description">
-                          {translation.description}
-                        </p>
-
-                        {/* Scannable Value Props */}
-                        <div className="space-y-2 mb-6 flex-1">
-                          {translation.features.map((feature, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center gap-3 px-2 py-1.5 rounded text-sm text-gb-fg-dark group-hover/card:text-gb-fg/80 transition-colors duration-200"
-                            >
-                              <CheckIcon className="w-4 h-4 text-gb-aqua-light shrink-0 opacity-70 group-hover/card:opacity-100 transition-opacity" />
-                              <span>{feature}</span>
-                            </div>
-                          ))}
+                        {/* Premium Price Tag */}
+                        <div
+                          className="absolute top-4 right-4 z-20 transition-transform duration-300 group-hover/card:scale-105 group-hover/card:rotate-2 origin-top-right"
+                          dir={language === "fa" ? "rtl" : "ltr"}
+                        >
+                          <span className="bg-gb-orange-light text-black font-extrabold font-mono px-3 py-1.5 rounded-sm text-sm shadow-[4px_4px_0_0_rgba(0,0,0,0.2)] product-price">
+                            {language === "fa"
+                              ? `${new Intl.NumberFormat("fa-IR").format(translation.price)} تومان`
+                              : `$${translation.price}`}
+                          </span>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 mb-6">
-                          {product.tags.map((tag) => (
-                            <Badge
-                              key={tag}
-                              className="bg-transparent text-gb-fg-dark/70 border-gb-bg-soft/50 text-xs px-2 py-0.5 rounded-full transition-colors group-hover/card:border-gb-orange-light/30 group-hover/card:text-gb-orange-light/80"
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
+                        <div
+                          className="flex flex-col flex-1 p-6 relative z-20"
+                          dir={language === "fa" ? "rtl" : "ltr"}
+                        >
+                          <h3 className="text-xl font-bold text-gb-fg mb-2 group-hover/card:text-gb-orange-light transition-colors duration-200 product-title">
+                            {translation.title}
+                          </h3>
+                          <p className="text-gb-fg-dark text-sm leading-relaxed mb-6 line-clamp-2 product-description">
+                            {translation.description}
+                          </p>
 
-                        <Button className="w-full mt-auto gap-2 bg-gb-bg-soft/50 text-gb-fg border border-gb-bg-soft group-hover/card:bg-gb-orange-light group-hover/card:text-gb-bg group-hover/card:border-gb-orange-light font-mono font-bold transition-all duration-300 shadow-sm relative overflow-hidden group/btn">
-                          {language === 'en' && (
-                            <span className="absolute inset-0 w-full h-full -ml-[-100%] bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover/card:animate-[shimmer_1.5s_infinite]" />
-                          )}
-                          <ShoppingCartIcon className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
-                          {product.type === 'book' ? t("purchase_book") : t("purchase_template")}
-                        </Button>
-                      </div>
-                    </Card>
-                  </Link>
-                </div>
+                          {/* Scannable Value Props */}
+                          <div className="space-y-2 mb-6 flex-1">
+                            {translation.features.map((feature, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center gap-3 px-2 py-1.5 rounded text-sm text-gb-fg-dark group-hover/card:text-gb-fg/80 transition-colors duration-200"
+                              >
+                                <CheckIcon className="w-4 h-4 text-gb-aqua-light shrink-0 opacity-70 group-hover/card:opacity-100 transition-opacity" />
+                                <span>{feature}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 mb-6">
+                            {product.tags.map((tag) => (
+                              <Badge
+                                key={tag}
+                                className="bg-transparent text-gb-fg-dark/70 border-gb-bg-soft/50 text-xs px-2 py-0.5 rounded-full transition-colors group-hover/card:border-gb-orange-light/30 group-hover/card:text-gb-orange-light/80"
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+
+                          <Button className="w-full mt-auto gap-2 bg-gb-bg-soft/50 text-gb-fg border border-gb-bg-soft group-hover/card:bg-gb-orange-light group-hover/card:text-gb-bg group-hover/card:border-gb-orange-light font-mono font-bold transition-all duration-300 shadow-sm relative overflow-hidden group/btn">
+                            {language === "en" && (
+                              <span className="absolute inset-0 w-full h-full -ml-[-100%] bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover/card:animate-[shimmer_1.5s_infinite]" />
+                            )}
+                            <ShoppingCartIcon className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                            {product.type === "book"
+                              ? t("purchase_book")
+                              : t("purchase_template")}
+                          </Button>
+                        </div>
+                      </Card>
+                    </Link>
+                  </div>
                 );
               })}
             </div>
           ) : (
-            <div className="text-center py-16 border-2 border-dashed border-gb-bg-soft rounded-lg font-mono text-gb-fg-dark" dir={language === 'fa' ? 'rtl' : 'ltr'}>
+            <div
+              className="text-center py-16 border-2 border-dashed border-gb-bg-soft rounded-lg font-mono text-gb-fg-dark"
+              dir={language === "fa" ? "rtl" : "ltr"}
+            >
               <div className="text-gb-orange-light text-lg font-bold mb-2">
-                {t('no_products_found')}
+                {t("no_products_found")}
               </div>
               <p className="text-sm text-gb-fg-dark mb-6">
-                {language === 'fa'
-                  ? 'تغییر فیلترها یا عبارت جستجو ممکن است به نتایج بیشتری منجر شود.'
-                  : 'Try adjusting your search term or active category filters to get matches.'}
+                {language === "fa"
+                  ? "تغییر فیلترها یا عبارت جستجو ممکن است به نتایج بیشتری منجر شود."
+                  : "Try adjusting your search term or active category filters to get matches."}
               </p>
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => {
                   updateStateWithTransition(() => {
-                    setSearchQuery('');
-                    setDebouncedQuery('');
+                    setSearchQuery("");
+                    setDebouncedQuery("");
                     setSelectedTag(null);
                     setSelectedType(null);
-                    setSortBy('none');
-                    setFormatFilter('all');
+                    setSortBy("none");
+                    setFormatFilter("all");
                   });
                 }}
                 className="cursor-pointer"
               >
-                {t('reset_filters_search')}
+                {t("reset_filters_search")}
               </Button>
             </div>
           )}

@@ -20,33 +20,11 @@ struct ZarinPalRequest {
     description: String,
 }
 
-#[derive(Deserialize)]
-struct ZarinPalRequestData {
-    code: i64,
-    authority: String,
-}
-
-#[derive(Deserialize)]
-struct ZarinPalRequestResponse {
-    data: Option<ZarinPalRequestData>,
-}
-
 #[derive(Serialize)]
 struct ZarinPalVerifyRequest {
     merchant_id: String,
     amount: i64,
     authority: String,
-}
-
-#[derive(Deserialize)]
-struct ZarinPalVerifyData {
-    code: i64,
-    ref_id: i64,
-}
-
-#[derive(Deserialize)]
-struct ZarinPalVerifyResponse {
-    data: Option<ZarinPalVerifyData>,
 }
 
 #[derive(Serialize)]
@@ -136,6 +114,11 @@ pub async fn checkout(
 
         let merchant_id = env::var("ZARINPAL_MERCHANT_ID").unwrap_or_else(|_| "sandbox".to_string());
         let is_sandbox = merchant_id == "sandbox";
+        let zarinpal_merchant = if is_sandbox {
+            "00000000-0000-0000-0000-000000000000".to_string()
+        } else {
+            merchant_id.clone()
+        };
 
         let req_url = if is_sandbox {
             "https://sandbox.zarinpal.com/pg/v4/payment/request.json"
@@ -148,7 +131,7 @@ pub async fn checkout(
         let client = reqwest::Client::new();
         let res = client.post(req_url)
             .json(&ZarinPalRequest {
-                merchant_id: merchant_id.clone(),
+                merchant_id: zarinpal_merchant,
                 amount: amount as i64,
                 callback_url,
                 description: format!("Purchase {}", product.id),
@@ -157,23 +140,30 @@ pub async fn checkout(
             .await
             .map_err(|e| (StatusCode::BAD_GATEWAY, format!("ZarinPal request failed: {}", e)))?;
 
-        let zarinpal_res: ZarinPalRequestResponse = res.json()
+        let body: serde_json::Value = res.json()
             .await
             .map_err(|e| (StatusCode::BAD_GATEWAY, format!("ZarinPal response parse error: {}", e)))?;
 
-        let data = zarinpal_res.data.ok_or((StatusCode::BAD_GATEWAY, "Failed to get ZarinPal authority".to_string()))?;
+        let authority = body["data"]["authority"]
+            .as_str()
+            .ok_or_else(|| {
+                let err_msg = body["errors"]["message"]
+                    .as_str()
+                    .unwrap_or("Failed to get ZarinPal authority");
+                (StatusCode::BAD_GATEWAY, err_msg.to_string())
+            })?;
 
         sqlx::query("UPDATE orders SET ref_id = ? WHERE id = ?")
-            .bind(&data.authority)
+            .bind(authority)
             .bind(&order_id)
             .execute(&pool)
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
         let redirect_url = if is_sandbox {
-            format!("https://sandbox.zarinpal.com/pg/StartPay/{}", data.authority)
+            format!("https://sandbox.zarinpal.com/pg/StartPay/{}", authority)
         } else {
-            format!("https://www.zarinpal.com/pg/StartPay/{}", data.authority)
+            format!("https://www.zarinpal.com/pg/StartPay/{}", authority)
         };
 
         Ok(Json(CheckoutResponse { redirect_url }))
@@ -264,6 +254,12 @@ pub async fn verify_zarinpal(
 
     let merchant_id = env::var("ZARINPAL_MERCHANT_ID").unwrap_or_else(|_| "sandbox".to_string());
     let is_sandbox = merchant_id == "sandbox";
+    let zarinpal_merchant = if is_sandbox {
+        "00000000-0000-0000-0000-000000000000".to_string()
+    } else {
+        merchant_id
+    };
+
     let verify_url = if is_sandbox {
         "https://sandbox.zarinpal.com/pg/v4/payment/verify.json"
     } else {
@@ -273,7 +269,7 @@ pub async fn verify_zarinpal(
     let client = reqwest::Client::new();
     let res = client.post(verify_url)
         .json(&ZarinPalVerifyRequest {
-            merchant_id,
+            merchant_id: zarinpal_merchant,
             amount: order.amount as i64,
             authority: params.authority.clone(),
         })
@@ -282,9 +278,9 @@ pub async fn verify_zarinpal(
 
     let success = match res {
         Ok(resp) => {
-            if let Ok(verify_resp) = resp.json::<ZarinPalVerifyResponse>().await {
-                if let Some(data) = verify_resp.data {
-                    data.code == 100 || data.code == 101
+            if let Ok(body) = resp.json::<serde_json::Value>().await {
+                if let Some(code) = body["data"]["code"].as_i64() {
+                    code == 100 || code == 101
                 } else {
                     false
                 }

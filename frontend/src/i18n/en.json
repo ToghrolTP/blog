@@ -94,5 +94,21 @@
   "login_error_invalid": "Invalid password. Please try again.",
   "login_error_failed": "Authentication failed. Please try again.",
   "auth_submit": "Sign In/Login",
-  "username_label_optional": "Username (Optional)"
+  "username_label_optional": "Username (Optional)",
+  "checkout_title": "Checkout",
+  "checkout_user_email": "Account Email Address",
+  "checkout_product": "Product",
+  "checkout_payment_method": "Payment Method",
+  "checkout_pay_toman": "Pay in Tomans (ZarinPal)",
+  "checkout_pay_toman_sub": "Shetab Cards & Direct Gateways",
+  "checkout_pay_crypto": "Pay with Crypto (NOWPayments)",
+  "checkout_pay_crypto_sub": "BTC, ETH, USDT & other coins",
+  "checkout_submit": "Proceed to Payment",
+  "checkout_verifying": "Verifying Payment...",
+  "checkout_success_title": "Payment Successful!",
+  "checkout_success_desc": "Thank you for your purchase. Your digital template/book is ready for download.",
+  "checkout_download_btn": "Download File",
+  "checkout_fail_title": "Payment Failed",
+  "checkout_fail_desc": "The transaction was canceled or could not be verified. Please try again.",
+  "checkout_back_store": "Back to Store"
 }
