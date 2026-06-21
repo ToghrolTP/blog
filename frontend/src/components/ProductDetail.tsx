@@ -161,7 +161,23 @@ export function ProductDetail() {
           lang: trans.language,
           url: `${window.location.origin}${trans.language === 'fa' ? '/fa' : ''}/store/product/${product.id}`
         }))}
-      />
+      >
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": translation.title,
+            "image": product.thumbnailUrl ? `${window.location.origin}${product.thumbnailUrl}` : "",
+            "description": translation.description,
+            "offers": {
+              "@type": "Offer",
+              "priceCurrency": "USD",
+              "price": translation.price || 0,
+              "availability": "https://schema.org/InStock"
+            }
+          })}
+        </script>
+      </SEO>
 
       <Link
         to={language === "fa" ? "/fa/store" : "/store"}
