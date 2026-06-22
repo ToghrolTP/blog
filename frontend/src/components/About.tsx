@@ -53,6 +53,7 @@ export function About() {
         </div>
       </div>
 
+      <div className="space-y-6 leading-relaxed">
         <p>
           {language === "fa" ? (
             <>
