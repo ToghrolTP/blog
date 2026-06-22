@@ -110,5 +110,6 @@
   "checkout_download_btn": "دانلود فایل",
   "checkout_fail_title": "پرداخت ناموفق بود",
   "checkout_fail_desc": "تراکنش لغو شد یا تایید پرداخت با خطا مواجه گردید. لطفاً دوباره تلاش کنید.",
-  "checkout_back_store": "بازگشت به فروشگاه"
+  "checkout_back_store": "بازگشت به فروشگاه",
+  "checkout_error_title": "خطا در تسویه حساب"
 }

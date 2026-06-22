@@ -168,9 +168,19 @@ export function CheckoutModal({ isOpen, onClose, product }: CheckoutModalProps) 
           </div>
 
           {error && (
-            <p className="text-xs text-gb-red-light font-bold text-center animate-in shake duration-200">
-              {error}
-            </p>
+            <div className="bg-gb-red-light/10 border border-gb-red-light/30 rounded p-3 text-xs text-gb-red-light font-bold leading-normal animate-in shake duration-200 text-start">
+              <p className="mb-1 uppercase tracking-wider text-[10px] opacity-75">
+                {t("checkout_error_title") || "Checkout Failed"}
+              </p>
+              <p>{error}</p>
+              {error.includes("ZarinPal") && (
+                <p className="mt-2 text-[10px] text-gb-fg-dark/70 font-normal">
+                  {isRtl 
+                    ? "سیستم زرین‌پال با خطا مواجه شد. در صورت تداوم می‌توانید روش پرداخت با رمزارز را امتحان کنید."
+                    : "ZarinPal gateway is experiencing issues. You can try paying with Crypto (NOWPayments) instead."}
+                </p>
+              )}
+            </div>
           )}
 
           {/* Submit Button */}

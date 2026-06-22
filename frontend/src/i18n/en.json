@@ -110,5 +110,6 @@
   "checkout_download_btn": "Download File",
   "checkout_fail_title": "Payment Failed",
   "checkout_fail_desc": "The transaction was canceled or could not be verified. Please try again.",
-  "checkout_back_store": "Back to Store"
+  "checkout_back_store": "Back to Store",
+  "checkout_error_title": "Checkout Failed"
 }

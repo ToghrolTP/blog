@@ -241,15 +241,15 @@ pub async fn verify_zarinpal(
 
     let order = match order {
         Ok(Some(o)) => o,
-        _ => return Redirect::to(&format!("{}/store/checkout/verify?status=failure", host_url)),
+        _ => return Redirect::to(&format!("{}/store/checkout/verify?status=failure&reason=not_found", host_url)),
     };
 
     if params.status != "OK" {
-        let _ = sqlx::query("UPDATE orders SET status = 'failed' WHERE id = ?")
+        let _ = sqlx::query("UPDATE orders SET status = 'failed', error_reason = 'Canceled by user' WHERE id = ?")
             .bind(&order.id)
             .execute(&pool)
             .await;
-        return Redirect::to(&format!("{}/store/checkout/verify?status=failure", host_url));
+        return Redirect::to(&format!("{}/store/checkout/verify?status=failure&reason=canceled", host_url));
     }
 
     let merchant_id = env::var("ZARINPAL_MERCHANT_ID").unwrap_or_else(|_| "sandbox".to_string());
@@ -276,19 +276,25 @@ pub async fn verify_zarinpal(
         .send()
         .await;
 
+    let mut error_msg = None;
     let success = match res {
         Ok(resp) => {
             if let Ok(body) = resp.json::<serde_json::Value>().await {
                 if let Some(code) = body["data"]["code"].as_i64() {
                     code == 100 || code == 101
                 } else {
+                    error_msg = Some(body["errors"]["message"].as_str().unwrap_or("Payment declined by gateway").to_string());
                     false
                 }
             } else {
+                error_msg = Some("Invalid JSON response from gateway verification".to_string());
                 false
             }
         }
-        _ => false,
+        Err(e) => {
+            error_msg = Some(e.to_string());
+            false
+        }
     };
 
     if success {
@@ -310,11 +316,13 @@ pub async fn verify_zarinpal(
 
         Redirect::to(&format!("{}/store/checkout/verify?status=success&orderId={}&token={}", host_url, order.id, token))
     } else {
-        let _ = sqlx::query("UPDATE orders SET status = 'failed' WHERE id = ?")
+        let reason = error_msg.unwrap_or_else(|| "Payment declined".to_string());
+        let _ = sqlx::query("UPDATE orders SET status = 'failed', error_reason = ? WHERE id = ?")
+            .bind(&reason)
             .bind(&order.id)
             .execute(&pool)
             .await;
-        Redirect::to(&format!("{}/store/checkout/verify?status=failure", host_url))
+        Redirect::to(&format!("{}/store/checkout/verify?status=failure&reason=declined", host_url))
     }
 }
 
@@ -324,6 +332,13 @@ pub async fn verify_crypto(
 ) -> Result<StatusCode, (StatusCode, String)> {
     if payload.payment_status == "finished" {
         sqlx::query("UPDATE orders SET status = 'completed' WHERE id = ?")
+            .bind(&payload.order_id)
+            .execute(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    } else if payload.payment_status == "failed" || payload.payment_status == "expired" {
+        sqlx::query("UPDATE orders SET status = 'failed', error_reason = ? WHERE id = ?")
+            .bind(&payload.payment_status)
             .bind(&payload.order_id)
             .execute(&pool)
             .await
@@ -344,7 +359,7 @@ pub async fn verify_crypto_mock(
             .await;
         Redirect::to(&format!("{}/store/checkout/verify?status=success&orderId={}", host_url, order_id))
     } else {
-        Redirect::to(&format!("{}/store/checkout/verify?status=failure", host_url))
+        Redirect::to(&format!("{}/store/checkout/verify?status=failure&reason=not_found", host_url))
     }
 }
 
@@ -386,6 +401,80 @@ pub async fn get_order_token(
     Ok(Json(serde_json::json!({ "token": token })))
 }
 
+#[derive(Debug, serde::Serialize)]
+pub struct DownloadItem {
+    pub order_id: String,
+    pub product_id: String,
+    pub title_en: String,
+    pub title_fa: String,
+    pub created_at: String,
+    pub download_url: String,
+}
+
+pub async fn my_downloads(
+    State(pool): State<SqlitePool>,
+    jar: CookieJar,
+) -> Result<Json<Vec<DownloadItem>>, (StatusCode, String)> {
+    let user_id = crate::auth::get_user_from_jar(&jar)
+        .ok_or((StatusCode::UNAUTHORIZED, "Not logged in".to_string()))?;
+
+    let completed_orders: Vec<OrderDb> = sqlx::query_as(
+        "SELECT * FROM orders WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC"
+    )
+    .bind(user_id)
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| "secret".to_string());
+    let mut items = Vec::new();
+
+    for order in completed_orders {
+        let title_en: Option<(String,)> = sqlx::query_as(
+            "SELECT title FROM product_translations WHERE product_id = ? AND language = 'en'"
+        )
+        .bind(&order.product_id)
+        .fetch_optional(&pool)
+        .await
+        .unwrap_or(None);
+
+        let title_fa: Option<(String,)> = sqlx::query_as(
+            "SELECT title FROM product_translations WHERE product_id = ? AND language = 'fa'"
+        )
+        .bind(&order.product_id)
+        .fetch_optional(&pool)
+        .await
+        .unwrap_or(None);
+
+        let t_en = title_en.map(|t| t.0).unwrap_or_else(|| "Product".to_string());
+        let t_fa = title_fa.map(|t| t.0).unwrap_or_else(|| "محصول".to_string());
+
+        let exp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 86400;
+        let claims = crate::products::DownloadClaims {
+            sub: order.id.clone(),
+            exp,
+        };
+        let token = jsonwebtoken::encode(
+            &jsonwebtoken::Header::default(),
+            &claims,
+            &jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
+        ).unwrap_or_default();
+
+        let download_url = format!("/api/downloads/{}?token={}", order.id, token);
+
+        items.push(DownloadItem {
+            order_id: order.id,
+            product_id: order.product_id,
+            title_en: t_en,
+            title_fa: t_fa,
+            created_at: order.created_at,
+            download_url,
+        });
+    }
+
+    Ok(Json(items))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -417,7 +506,20 @@ mod tests {
                 gateway TEXT NOT NULL,
                 status TEXT NOT NULL,
                 ref_id TEXT,
+                error_reason TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )"
+        ).execute(&pool).await.unwrap();
+
+        sqlx::query(
+            "CREATE TABLE product_translations (
+                product_id TEXT NOT NULL,
+                language TEXT NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT NOT NULL,
+                features TEXT NOT NULL,
+                price REAL NOT NULL DEFAULT 0.0,
+                PRIMARY KEY (product_id, language)
             )"
         ).execute(&pool).await.unwrap();
 
@@ -516,5 +618,57 @@ mod tests {
         assert!(res.is_ok());
         let json_val = res.unwrap();
         assert!(json_val.0.get("token").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_my_downloads_unauthorized() {
+        let pool = setup_test_db().await;
+        let jar = CookieJar::new();
+
+        let res = my_downloads(State(pool), jar).await;
+        assert!(res.is_err());
+        let (status, msg) = res.err().unwrap();
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+        assert_eq!(msg, "Not logged in");
+    }
+
+    #[tokio::test]
+    async fn test_my_downloads_success() {
+        let pool = setup_test_db().await;
+
+        sqlx::query("INSERT INTO users (id, username, avatar_url, email) VALUES (1, 'purchaser', 'avatar1', 'p@example.com')")
+            .execute(&pool).await.unwrap();
+
+        sqlx::query("INSERT INTO orders (id, user_id, email, product_id, amount, currency, gateway, status) VALUES ('order123', 1, 'p@example.com', 'prod123', 10.0, 'USD', 'crypto', 'completed')")
+            .execute(&pool).await.unwrap();
+
+        sqlx::query("INSERT INTO product_translations (product_id, language, title, description, features, price) VALUES ('prod123', 'en', 'English Title', 'desc', 'feat', 10.0)")
+            .execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO product_translations (product_id, language, title, description, features, price) VALUES ('prod123', 'fa', 'Persian Title', 'desc', 'feat', 10.0)")
+            .execute(&pool).await.unwrap();
+
+        let claims = crate::auth::Claims {
+            sub: 1,
+            exp: 100000000000,
+        };
+        let token = jsonwebtoken::encode(
+            &jsonwebtoken::Header::default(),
+            &claims,
+            &jsonwebtoken::EncodingKey::from_secret("secret".as_bytes()),
+        ).unwrap();
+
+        unsafe { std::env::set_var("JWT_SECRET", "secret"); }
+        let jar = CookieJar::new().add(axum_extra::extract::cookie::Cookie::new("token", token));
+
+        let res = my_downloads(State(pool), jar).await;
+        assert!(res.is_ok());
+        let items = res.unwrap().0;
+        assert_eq!(items.len(), 1);
+        let item = &items[0];
+        assert_eq!(item.order_id, "order123");
+        assert_eq!(item.product_id, "prod123");
+        assert_eq!(item.title_en, "English Title");
+        assert_eq!(item.title_fa, "Persian Title");
+        assert!(item.download_url.contains("/api/downloads/order123?token="));
     }
 }

@@ -243,6 +243,7 @@ pub struct OrderDb {
     pub status: String,
     pub ref_id: Option<String>,
     pub created_at: String,
+    pub error_reason: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]

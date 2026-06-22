@@ -364,7 +364,7 @@ pub async fn download_file(
     }
 
     let order = sqlx::query_as::<_, crate::models::OrderDb>(
-        "SELECT id, user_id, email, product_id, amount, currency, gateway, status, ref_id, created_at FROM orders WHERE id = ?"
+        "SELECT * FROM orders WHERE id = ?"
     )
     .bind(&order_id)
     .fetch_optional(&pool)
@@ -475,6 +475,7 @@ mod tests {
                 gateway TEXT NOT NULL,
                 status TEXT NOT NULL,
                 ref_id TEXT,
+                error_reason TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )"
         ).execute(&pool).await.unwrap();
