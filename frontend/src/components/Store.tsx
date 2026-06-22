@@ -379,7 +379,8 @@ export function Store() {
               : "Specialized store for LaTeX templates, tech books, and engineering tools.",
             "itemListElement": products.map((prod, idx) => {
               const trans = prod.translations?.find((t) => t.language === language) ||
-                prod.translations?.find((t) => t.language === "en") || { title: prod.title };
+                prod.translations?.find((t) => t.language === "en") ||
+                prod.translations?.[0] || { title: "Product" };
               return {
                 "@type": "ListItem",
                 "position": idx + 1,
