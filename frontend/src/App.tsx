@@ -286,7 +286,9 @@ function Home() {
             "sameAs": [
               "https://github.com/toghrol",
               "https://www.linkedin.com/in/toghrol/"
-            ]
+            ],
+            "image": `${window.location.origin}/avatar.png`,
+            "knowsAbout": ["Rust (Programming Language)", "Software Engineering", "Linux", "Backend Development"]
           })}
         </script>
         <script type="application/ld+json">

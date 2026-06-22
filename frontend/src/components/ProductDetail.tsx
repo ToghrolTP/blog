@@ -168,7 +168,37 @@ export function ProductDetail() {
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
+            "@type": "Person",
+            "@id": `${window.location.origin}/#person`,
+            "name": "Toghrol",
+            "url": "https://github.com/toghrol",
+            "sameAs": [
+              "https://github.com/toghrol",
+              "https://www.linkedin.com/in/toghrol/"
+            ],
+            "image": `${window.location.origin}/avatar.png`,
+            "knowsAbout": ["Rust (Programming Language)", "Software Engineering", "Linux", "Backend Development"]
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "@id": `${window.location.origin}/#organization`,
+            "name": "Log40",
+            "url": `${window.location.origin}/`,
+            "logo": `${window.location.origin}/favicon.png`,
+            "sameAs": [
+              "https://github.com/toghrol",
+              "https://www.linkedin.com/in/toghrol/"
+            ]
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
             "@type": "Product",
+            "@id": `${window.location.origin}${language === 'fa' ? '/fa' : ''}/store/product/${product.id}#product`,
             "name": translation.title,
             "image": product.thumbnailUrl ? `${window.location.origin}${product.thumbnailUrl}` : "",
             "description": translation.description,
@@ -176,7 +206,10 @@ export function ProductDetail() {
               "@type": "Offer",
               "priceCurrency": "USD",
               "price": translation.price || 0,
-              "availability": "https://schema.org/InStock"
+              "availability": "https://schema.org/InStock",
+              "seller": {
+                "@id": `${window.location.origin}/#organization`
+              }
             }
           })}
         </script>

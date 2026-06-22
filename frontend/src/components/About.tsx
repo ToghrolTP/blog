@@ -4,11 +4,11 @@ import { useLanguage } from "../contexts/LanguageContext";
 export function About() {
   const { language } = useLanguage();
 
-  const title = language === "fa" ? "درباره من | Log40" : "About Me | Log40";
+  const title = language === "fa" ? "طغرل — مهندس سیستم و توسعه‌دهنده راست | Log40" : "Toghrol — Systems Engineer & Rust Developer | Log40";
   const description =
     language === "fa"
-      ? "بیوگرافی و مهارت‌های طغرل، مهندس سیستم و توسعه‌دهنده راست."
-      : "Biography and skills of Toghrol, systems engineer and Rust developer.";
+      ? "طغرل مهندس سیستم و توسعه‌دهنده راست است که مقالاتی عمیق درباره لینوکس، مهندسی بک‌اند و ابزارهای متن‌باز می‌نویسد. بیوگرافی و مهارت‌ها را بخوانید."
+      : "Toghrol is a systems engineer and Rust developer writing in-depth guides on Linux, backend engineering, and open-source tooling. Explore my bio and skills.";
 
   const url = `${window.location.origin}${language === "fa" ? "/fa" : ""}/about`;
 
@@ -31,14 +31,15 @@ export function About() {
             ],
             "jobTitle": "Systems & Rust Software Engineer",
             "description": description,
-            "image": `${window.location.origin}/favicon.png`
+            "image": `${window.location.origin}/avatar.png`,
+            "knowsAbout": ["Rust (Programming Language)", "Software Engineering", "Linux", "Backend Development"]
           })}
         </script>
       </SEO>
 
       <div className="flex flex-col md:flex-row items-center gap-6 mb-8 border-b border-gb-bg-soft pb-6">
         <img 
-          src="/favicon.png" 
+          src="/avatar.png" 
           alt="Toghrol - Systems & Rust Software Engineer" 
           className="w-24 h-24 rounded-full border-2 border-gb-orange-light bg-gb-bg-dark"
         />
@@ -52,19 +53,14 @@ export function About() {
         </div>
       </div>
 
-      <div className="space-y-6 leading-relaxed">
         <p>
           {language === "fa" ? (
             <>
-              سلام! من <strong>طغرل</strong> هستم. دانشجوی مهندسی نرم‌افزار
-              متمرکز بر سیستم‌های لینوکس، توسعه بک‌اند، و زبان برنامه‌نویسی راست
-              (Rust).
+              سلام! من <strong>طغرل</strong> هستم، مهندس سیستم و توسعه‌دهنده راست. تخصص من توسعه سیستم‌های بک‌اند با کارایی بالا، ابزارهای کم‌حجم سیستمی لینوکس و رابط‌های کاربری متنی ترمینال (TUI) است. در طول سال‌ها، پروژه‌های مختلفی را توسعه داده و منتشر کرده‌ام؛ از جمله <em>porg</em> (ابزار مدیریت آرشیو و بسته‌بندی در راست)، <em>Log40</em> (همین وبلاگ و فروشگاه با کارایی بالا)، و ابزارهای خط فرمان مختلف شامل داشبورد ترمینالی با کتابخانه <em>ratatui</em> و بازی تتریس متنی ترمینال با پوسته‌های سفارشی.
             </>
           ) : (
             <>
-              Hello! I'm <strong>Toghrol</strong>, a software engineer college
-              student focused on Linux systems, backend development, and the
-              Rust programming language.
+              Hello! I'm <strong>Toghrol</strong>, a systems engineer and Rust developer. I specialize in building high-performance backend systems, low-level Linux utilities, and terminal user interfaces (TUIs). Over the years, I have built and shipped projects like <em>porg</em> (a lightweight Rust packer and archive manager), <em>Log40</em> (this high-performance blogging & digital product store platform), and various command-line applications including a custom <em>ratatui</em>-based TUI dashboard and a themed terminal Tetris game.
             </>
           )}
         </p>
@@ -72,14 +68,11 @@ export function About() {
         <p>
           {language === "fa" ? (
             <>
-              این وبلاگ رو برای اشتراک‌گذاری آموخته‌هام در دنیای لینوکس، توسعه
-              ابزار‌های ترمینال و سیستم‌های بک‌‌‌اند High Performance راه‌اندازی
-              کردم.
+              من وبلاگ لاگ۴۰ را به عنوان پایگاهی برای انتشار مقالات تخصصی، تحلیل‌های عمیق روی مدل مالکیت و مدیریت حافظه در راست، معماری‌های سیستم و لینوکس راه‌اندازی کردم. تمامی ابزارها و قالب‌های موجود در فروشگاه به صورت متن‌باز یا اختصاصی برای توسعه‌دهندگانی طراحی شده‌اند که به دنبال بهبود فرآیندهای مهندسی خود هستند.
             </>
           ) : (
             <>
-              I started this blog to share my learnings in the Linux world,
-              building terminal tools, and high-performance backend systems.
+              I started Log40 as a hub for publishing technical articles, deep dives into Rust ownership and memory management models, Linux system internals, and backend architectural design. All the tools and templates featured in my store are fully open-source or curated for engineers looking to level up their development workflow.
             </>
           )}
         </p>
