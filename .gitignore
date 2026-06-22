@@ -74,3 +74,5 @@ __pycache__/
 prod_build/
 graphify-out/
 .obsidian/
+/google*.html
+seo-audit*.md
