@@ -585,8 +585,12 @@ async fn serve_seo_post(
             let dir = if is_fa { "rtl" } else { "ltr" };
             html = html.replace("<html lang=\"en\">", &format!("<html lang=\"{}\" dir=\"{}\">", target_lang, dir));
             
+            let mut article_html = String::new();
+            let parser = pulldown_cmark::Parser::new(&trans.content);
+            pulldown_cmark::html::push_html(&mut article_html, parser);
+
             // Build body HTML containing full post contents for SEO/GEO crawlers
-            let mut body_html = format!(
+            let body_html = format!(
                 r#"<div id="root">
                 <article dir="{}">
                     <header>
@@ -594,34 +598,24 @@ async fn serve_seo_post(
                         <time datetime="{}">{}</time>
                         <p><strong>{}</strong></p>
                     </header>
-                    <section>"#,
-                dir, escape_html(&trans.title), escape_html(&post.date), escape_html(&post.date), escape_html(&trans.summary)
-            );
-            
-            for line in trans.content.lines() {
-                let trimmed = line.trim();
-                if !trimmed.is_empty() {
-                    body_html.push_str(&format!("<p>{}</p>\n", escape_html(trimmed)));
-                }
-            }
-            body_html.push_str(
-                r#"</section>
+                    <section>{}</section>
                 </article>
-                </div>"#
+                </div>"#,
+                dir, escape_html(&trans.title), escape_html(&post.date), escape_html(&post.date), escape_html(&trans.summary), article_html
             );
 
             // Add schema markup
             let person_schema = format!(
-                r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
-                base_url
+                r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"],"image":"{}/avatar.png","knowsAbout":["Rust (Programming Language)","Software Engineering","Linux","Backend Development"]}}"#,
+                base_url, base_url
             );
             let organization_schema = format!(
                 r#"{{"@context":"https://schema.org","@type":"Organization","@id":"{}/#organization","name":"Log40","url":"{}/","logo":"{}/favicon.png","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
                 base_url, base_url, base_url
             );
             let blogposting_schema = format!(
-                r#"{{"@context":"https://schema.org","@type":"BlogPosting","@id":"{}#blogposting","headline":"{}","description":"{}","url":"{}","mainEntityOfPage":{{"@type":"WebPage","@id":"{}"}},"datePublished":"{}","dateModified":"{}","author":{{"@id":"{}/#person"}},"publisher":{{"@id":"{}/#organization"}}}}"#,
-                current_url, escape_html(&trans.title), escape_html(&trans.summary), current_url, current_url, escape_html(&post.date), escape_html(&post.date), base_url, base_url
+                r#"{{"@context":"https://schema.org","@type":"BlogPosting","@id":"{}#blogposting","headline":"{}","description":"{}","url":"{}","mainEntityOfPage":{{"@type":"WebPage","@id":"{}"}},"datePublished":"{}","dateModified":"{}","author":{{"@id":"{}/#person"}},"publisher":{{"@id":"{}/#organization"}},"keywords":{}}}"#,
+                current_url, escape_html(&trans.title), escape_html(&trans.summary), current_url, current_url, escape_html(&post.date), escape_html(&post.date), base_url, base_url, post.tags
             );
 
             meta.push_str(&format!(
@@ -667,6 +661,13 @@ async fn serve_seo_product(
             html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
             
             let thumb = product.thumbnail_url.clone().unwrap_or_default();
+            let absolute_thumb = if thumb.is_empty() {
+                format!("{}/og-image.png", base_url)
+            } else if thumb.starts_with('/') {
+                format!("{}{}", base_url, thumb)
+            } else {
+                thumb.clone()
+            };
             
             let mut meta = format!(
                 r#"<title>{} | Log40</title>
@@ -676,21 +677,18 @@ async fn serve_seo_product(
                 <meta property="og:description" content="{}" />
                 <meta property="og:url" content="{}" />
                 <meta property="og:type" content="product" />
+                <meta property="og:site_name" content="Log40" />
+                <meta property="og:image" content="{}" />
                 <meta name="twitter:card" content="summary_large_image" />
                 <meta name="twitter:title" content="{}" />
-                <meta name="twitter:description" content="{}" />"#,
-                escape_html(&trans.title), escape_html(&trans.description), escape_html(&current_url),
-                escape_html(&trans.title), escape_html(&trans.description), escape_html(&current_url),
-                escape_html(&trans.title), escape_html(&trans.description)
-            );
-            
-            if !thumb.is_empty() {
-                meta.push_str(&format!(
-                    r#"<meta property="og:image" content="{}" />
+                <meta name="twitter:description" content="{}" />
                 <meta name="twitter:image" content="{}" />"#,
-                    escape_html(&thumb), escape_html(&thumb)
-                ));
-            }
+                escape_html(&trans.title), escape_html(&trans.description), escape_html(&current_url),
+                escape_html(&trans.title), escape_html(&trans.description), escape_html(&current_url),
+                escape_html(&absolute_thumb),
+                escape_html(&trans.title), escape_html(&trans.description),
+                escape_html(&absolute_thumb)
+            );
             
             for t in &translations {
                 let alt_url = if t.language == "fa" {
@@ -704,11 +702,27 @@ async fn serve_seo_product(
                 ));
             }
             
-            let product_schema = format!(
-                r#"{{"@context":"https://schema.org","@type":"Product","name":"{}","image":"{}","description":"{}","offers":{{"@type":"Offer","priceCurrency":"USD","price":{},"availability":"https://schema.org/InStock"}}}}"#,
-                escape_html(&trans.title), escape_html(&thumb), escape_html(&trans.description), trans.price
+            let person_schema = format!(
+                r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"],"image":"{}/avatar.png","knowsAbout":["Rust (Programming Language)","Software Engineering","Linux","Backend Development"]}}"#,
+                base_url, base_url
             );
-            meta.push_str(&format!("<script type=\"application/ld+json\">{}</script>", product_schema));
+
+            let organization_schema = format!(
+                r#"{{"@context":"https://schema.org","@type":"Organization","@id":"{}/#organization","name":"Log40","url":"{}/","logo":"{}/favicon.png","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
+                base_url, base_url, base_url
+            );
+
+            let product_schema = format!(
+                r#"{{"@context":"https://schema.org","@type":"Product","@id":"{}#product","name":"{}","image":"{}","description":"{}","offers":{{"@type":"Offer","priceCurrency":"USD","price":{},"availability":"https://schema.org/InStock","seller":{{"@id":"{}/#organization"}}}}}}"#,
+                current_url, escape_html(&trans.title), escape_html(&absolute_thumb), escape_html(&trans.description), trans.price, base_url
+            );
+
+            meta.push_str(&format!(
+                r#"<script type="application/ld+json">{}</script>
+                <script type="application/ld+json">{}</script>
+                <script type="application/ld+json">{}</script>"#,
+                person_schema, organization_schema, product_schema
+            ));
 
             // Inject body product contents inside #root
             let features: Vec<String> = serde_json::from_str(&trans.features).unwrap_or_default();
@@ -767,21 +781,84 @@ async fn serve_seo_store(
     html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
     
     let description = if is_fa {
-        format!("مرور {} محصول دیجیتال ما.", products_db.len())
+        format!("دانلود قالب‌های LaTeX، کتاب‌های فنی و ابزارهای مهندسی. گردآوری شده توسط طغرل برای مهندسان نرم‌افزار و پژوهشگران. شامل {} محصول دیجیتال.", products_db.len())
     } else {
-        format!("Browse our collection of {} digital products.", products_db.len())
+        format!("Download LaTeX templates, technical books, and engineering tools. Curated by Toghrol for software engineers and researchers. Explore {} digital products.", products_db.len())
     };
     
     let base_url = env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
     let current_url = format!("{}{}", base_url, uri.path());
+    let store_title = if is_fa {
+        "فروشگاه Log40 — قالب‌های لاتک، کتاب‌ها و ابزارهای فنی"
+    } else {
+        "Log40 Store — LaTeX Templates, Tech Books & Tools"
+    };
+
+    let translations_db = sqlx::query_as::<_, crate::models::ProductTranslationDb>(
+        "SELECT product_id, language, title, description, features, price FROM product_translations"
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let person_schema = format!(
+        r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"],"image":"{}/avatar.png","knowsAbout":["Rust (Programming Language)","Software Engineering","Linux","Backend Development"]}}"#,
+        base_url, base_url
+    );
+    let organization_schema = format!(
+        r#"{{"@context":"https://schema.org","@type":"Organization","@id":"{}/#organization","name":"Log40","url":"{}/","logo":"{}/favicon.png","description":"{}","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
+        base_url, base_url, base_url, escape_html(&description)
+    );
+
+    let mut list_items_json = Vec::new();
+    for (idx, prod) in products_db.iter().enumerate() {
+        if let Some(trans) = translations_db.iter()
+            .find(|t| t.product_id == prod.id && t.language == target_lang)
+            .or_else(|| translations_db.iter().find(|t| t.product_id == prod.id && t.language == "en"))
+        {
+            let prod_url = if is_fa {
+                format!("{}/fa/store/product/{}", base_url, prod.id)
+            } else {
+                format!("{}/store/product/{}", base_url, prod.id)
+            };
+            list_items_json.push(format!(
+                r#"{{"@type":"ListItem","position":{},"name":"{}","url":"{}"}}"#,
+                idx + 1, escape_html(&trans.title), prod_url
+            ));
+        }
+    }
+    let list_items_str = list_items_json.join(",");
+    let item_list_schema = format!(
+        r#"{{"@context":"https://schema.org","@type":"ItemList","name":"Log40 Store","description":"{}","itemListElement":[{}]}}"#,
+        escape_html(&description), list_items_str
+    );
 
     let meta = format!(
-        r#"<title>Store | Log40</title>
+        r#"<title>{}</title>
         <meta name="description" content="{}" />
         <link rel="canonical" href="{}" />
         <link rel="alternate" hreflang="en" href="{}/store" />
-        <link rel="alternate" hreflang="fa" href="{}/fa/store" />"#,
-        escape_html(&description), escape_html(&current_url), base_url, base_url
+        <link rel="alternate" hreflang="fa" href="{}/fa/store" />
+        <meta property="og:title" content="{}" />
+        <meta property="og:description" content="{}" />
+        <meta property="og:url" content="{}" />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Log40" />
+        <meta property="og:image" content="{}/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="{}" />
+        <meta name="twitter:description" content="{}" />
+        <meta name="twitter:image" content="{}/og-image.png" />
+        <script type="application/ld+json">{}</script>
+        <script type="application/ld+json">{}</script>
+        <script type="application/ld+json">{}</script>"#,
+        escape_html(store_title), escape_html(&description), escape_html(&current_url),
+        base_url, base_url,
+        escape_html(store_title), escape_html(&description), escape_html(&current_url),
+        base_url,
+        escape_html(store_title), escape_html(&description),
+        base_url,
+        person_schema, organization_schema, item_list_schema
     );
     
     // Fetch translations for pre-rendering store contents inside #root
@@ -797,16 +874,10 @@ async fn serve_seo_store(
     );
 
     for prod in products_db {
-        let trans_db = sqlx::query_as::<_, crate::models::ProductTranslationDb>(
-            "SELECT product_id, language, title, description, features, price FROM product_translations WHERE product_id = ? AND language = ?"
-        )
-        .bind(&prod.id)
-        .bind(target_lang)
-        .fetch_optional(&pool)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-        if let Some(trans) = trans_db {
+        if let Some(trans) = translations_db.iter()
+            .find(|t| t.product_id == prod.id && t.language == target_lang)
+            .or_else(|| translations_db.iter().find(|t| t.product_id == prod.id && t.language == "en"))
+        {
             let prod_url = if is_fa {
                 format!("/fa/store/product/{}", prod.id)
             } else {
@@ -885,8 +956,8 @@ async fn serve_seo_home(
     html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
 
     let person_schema = format!(
-        r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
-        base_url
+        r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"],"image":"{}/avatar.png","knowsAbout":["Rust (Programming Language)","Software Engineering","Linux","Backend Development"]}}"#,
+        base_url, base_url
     );
 
     let organization_schema = format!(
@@ -934,7 +1005,6 @@ async fn serve_seo_home(
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>
-        <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>"#,
         escape_html(title), escape_html(description), escape_html(&current_url),
         base_url, base_url,
@@ -942,7 +1012,7 @@ async fn serve_seo_home(
         base_url,
         escape_html(title), escape_html(description),
         base_url,
-        person_schema, organization_schema, website_schema, blog_schema, person_schema
+        person_schema, organization_schema, website_schema, blog_schema
     );
 
     let mut body_html = format!(
@@ -1008,15 +1078,15 @@ async fn serve_seo_about(
     let current_url = format!("{}{}", base_url, path);
 
     let title = if is_fa {
-        "درباره من | Log40"
+        "طغرل — مهندس سیستم و توسعه‌دهنده راست | Log40"
     } else {
-        "About Me | Log40"
+        "Toghrol — Systems Engineer & Rust Developer | Log40"
     };
 
     let description = if is_fa {
-        "بیوگرافی و مهارت‌های طغرل، مهندس سیستم و توسعه‌دهنده راست."
+        "طغرل مهندس سیستم و توسعه‌دهنده راست است که مقالاتی عمیق درباره لینوکس، مهندسی بک‌اند و ابزارهای متن‌باز می‌نویسد. بیوگرافی و مهارت‌ها را بخوانید."
     } else {
-        "Biography and skills of Toghrol, systems engineer and Rust developer."
+        "Toghrol is a systems engineer and Rust developer writing in-depth guides on Linux, backend engineering, and open-source tooling. Explore my bio and skills."
     };
 
     html = html.replace("<title>Log40</title>", "");
@@ -1024,7 +1094,7 @@ async fn serve_seo_about(
     html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
 
     let person_schema = format!(
-        r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"],"jobTitle":"Systems & Rust Software Engineer","description":"{}","image":"{}/favicon.png"}}"#,
+        r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"],"jobTitle":"Systems & Rust Software Engineer","description":"{}","image":"{}/avatar.png","knowsAbout":["Rust (Programming Language)","Software Engineering","Linux","Backend Development"]}}"#,
         base_url, escape_html(description), base_url
     );
 
@@ -1059,12 +1129,12 @@ async fn serve_seo_about(
             r#"<div id="root">
             <article dir="rtl">
                 <header>
-                    <img src="/favicon.png" alt="طغرل - مهندس سیستم و توسعه‌دهنده راست" />
+                    <img src="/avatar.png" alt="طغرل - مهندس سیستم و توسعه‌دهنده راست" />
                     <h1>درباره من</h1>
                 </header>
                 <section>
-                    <p>سلام! من <strong>طغرل</strong> هستم. یک مهندس نرم‌افزار متمرکز بر سیستم‌های لینوکس، توسعه بک‌اند، و زبان برنامه‌نویسی راست (Rust).</p>
-                    <p>من این وبلاگ را برای به اشتراک‌گذاری آموخته‌هایم در دنیای لینوکس، توسعه ابزارهای ترمینال، و سیستم‌های بک‌ند با کارایی بالا راه‌اندازی کردم.</p>
+                    <p>سلام! من <strong>طغرل</strong> هستم، مهندس سیستم و توسعه‌دهنده راست. تخصص من توسعه سیستم‌های بک‌اند با کارایی بالا، ابزارهای کم‌حجم سیستمی لینوکس و رابط‌های کاربری متنی ترمینال (TUI) است. در طول سال‌ها، پروژه‌های مختلفی را توسعه داده و منتشر کرده‌ام؛ از جمله <em>porg</em> (ابزار مدیریت آرشیو و بسته‌بندی در راست)، <em>Log40</em> (همین وبلاگ و فروشگاه با کارایی بالا)، و ابزارهای خط فرمان مختلف شامل داشبورد ترمینالی با کتابخانه <em>ratatui</em> و بازی تتریس متنی ترمینال با پوسته‌های سفارشی.</p>
+                    <p>من وبلاگ لاگ۴۰ را به عنوان پایگاهی برای انتشار مقالات تخصصی، تحلیل‌های عمیق روی مدل مالکیت و مدیریت حافظه در راست، معماری‌های سیستم و لینوکس راه‌اندازی کردم. تمامی ابزارها و قالب‌های موجود در فروشگاه به صورت متن‌باز یا اختصاصی برای توسعه‌دهندگانی طراحی شده‌اند که به دنبال بهبود فرآیندهای مهندسی خود هستند.</p>
                     <h2>مهارت‌های اصلی</h2>
                     <ul>
                         <li>زبان برنامه‌نویسی راست (Rust)</li>
@@ -1081,12 +1151,12 @@ async fn serve_seo_about(
             r#"<div id="root">
             <article dir="ltr">
                 <header>
-                    <img src="/favicon.png" alt="Toghrol - Systems & Rust Software Engineer" />
+                    <img src="/avatar.png" alt="Toghrol - Systems & Rust Software Engineer" />
                     <h1>About Me</h1>
                 </header>
                 <section>
-                    <p>Hello! I'm <strong>Toghrol</strong>, a software engineer focused on Linux systems, backend development, and the Rust programming language.</p>
-                    <p>I started this blog to share my learnings in the Linux world, building terminal tools, and high-performance backend systems.</p>
+                    <p>Hello! I'm <strong>Toghrol</strong>, a systems engineer and Rust developer. I specialize in building high-performance backend systems, low-level Linux utilities, and terminal user interfaces (TUIs). Over the years, I have built and shipped projects like <em>porg</em> (a lightweight Rust packer and archive manager), <em>Log40</em> (this high-performance blogging & digital product store platform), and various command-line applications including a custom <em>ratatui</em>-based TUI dashboard and a themed terminal Tetris game.</p>
+                    <p>I started Log40 as a hub for publishing technical articles, deep dives into Rust ownership and memory management models, Linux system internals, and backend architectural design. All the tools and templates featured in my store are fully open-source or curated for engineers looking to level up their development workflow.</p>
                     <h2>Core Skills</h2>
                     <ul>
                         <li>Rust Programming Language</li>

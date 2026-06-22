@@ -22,3 +22,4 @@ tokio-util = { version = "0.7.18", features = ["io"] }
 bcrypt = "0.15"
 dicebear-core = "10.3.0"
 dicebear-styles = { version = "10.2.0", features = ["glyphs"] }
+pulldown-cmark = "0.13.4"

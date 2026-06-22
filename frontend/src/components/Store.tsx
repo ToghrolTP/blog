@@ -16,9 +16,36 @@ import {
 import { Link } from "react-router-dom";
 import { Product } from "../types";
 import { CategoryButton } from "./ui/CategoryButton";
+import { useAuth } from "../contexts/AuthContext";
 
 export function Store() {
   const { language, t } = useLanguage();
+  const { user } = useAuth();
+  const [downloads, setDownloads] = useState<any[]>([]);
+  const [loadingDownloads, setLoadingDownloads] = useState(false);
+  const [isDownloadsOpen, setIsDownloadsOpen] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setLoadingDownloads(true);
+      fetch("/api/orders/my-downloads")
+        .then((res) => {
+          if (res.ok) return res.json();
+          return [];
+        })
+        .then((data) => {
+          setDownloads(data);
+          setLoadingDownloads(false);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch downloads:", err);
+          setLoadingDownloads(false);
+        });
+    } else {
+      setDownloads([]);
+    }
+  }, [user]);
+
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -296,7 +323,73 @@ export function Store() {
 
   return (
     <div className="animate-in fade-in duration-700">
-      <SEO title={`${t("store_title")} | Log40`} />
+      <SEO
+        title={`${t("store_title")} | Log40`}
+        description={
+          language === "fa"
+            ? `دانلود قالب‌های LaTeX، کتاب‌های فنی و ابزارهای مهندسی. گردآوری شده توسط طغرل برای مهندسان نرم‌افزار و پژوهشگران. شامل ${products.length} محصول دیجیتال.`
+            : `Download LaTeX templates, technical books, and engineering tools. Curated by Toghrol for software engineers and researchers. Explore ${products.length} digital products.`
+        }
+        url={`${window.location.origin}${language === "fa" ? "/fa" : ""}/store`}
+        type="website"
+        alternateLanguageUrls={[
+          { lang: "en", url: `${window.location.origin}/store` },
+          { lang: "fa", url: `${window.location.origin}/fa/store` }
+        ]}
+      >
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Person",
+            "@id": `${window.location.origin}/#person`,
+            "name": "Toghrol",
+            "url": "https://github.com/toghrol",
+            "sameAs": [
+              "https://github.com/toghrol",
+              "https://www.linkedin.com/in/toghrol/"
+            ],
+            "image": `${window.location.origin}/avatar.png`,
+            "knowsAbout": ["Rust (Programming Language)", "Software Engineering", "Linux", "Backend Development"]
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "@id": `${window.location.origin}/#organization`,
+            "name": "Log40",
+            "url": `${window.location.origin}/`,
+            "logo": `${window.location.origin}/favicon.png`,
+            "description": language === "fa"
+              ? "فروشگاه تخصصی قالب‌های لاتک، کتاب‌های فنی و ابزارهای مهندسی."
+              : "Specialized store for LaTeX templates, tech books, and engineering tools.",
+            "sameAs": [
+              "https://github.com/toghrol",
+              "https://www.linkedin.com/in/toghrol/"
+            ]
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "Log40 Store",
+            "description": language === "fa"
+              ? "فروشگاه تخصصی قالب‌های لاتک، کتاب‌های فنی و ابزارهای مهندسی."
+              : "Specialized store for LaTeX templates, tech books, and engineering tools.",
+            "itemListElement": products.map((prod, idx) => {
+              const trans = prod.translations?.find((t) => t.language === language) ||
+                prod.translations?.find((t) => t.language === "en") || { title: prod.title };
+              return {
+                "@type": "ListItem",
+                "position": idx + 1,
+                "name": trans.title,
+                "url": `${window.location.origin}${language === "fa" ? "/fa" : ""}/store/product/${prod.id}`
+              };
+            })
+          })}
+        </script>
+      </SEO>
 
       {/* Hero Section */}
       <div
@@ -311,6 +404,56 @@ export function Store() {
           dangerouslySetInnerHTML={{ __html: descHtml }}
         ></p>
       </div>
+
+      {/* My Purchases Recovery Panel */}
+      {user && downloads.length > 0 && (
+        <div className="mb-12 border-2 border-gb-bg-soft rounded p-4 md:p-6 font-mono text-xs bg-gb-bg-soft/5 shadow-[2px_2px_0_0_rgba(0,0,0,0.15)] animate-in fade-in slide-in-from-top-2 duration-300">
+          <div 
+            onClick={() => setIsDownloadsOpen(!isDownloadsOpen)}
+            className="flex items-center justify-between cursor-pointer select-none"
+            dir={language === "fa" ? "rtl" : "ltr"}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-gb-orange-light text-lg">📦</span>
+              <span className="text-sm font-extrabold text-gb-fg uppercase tracking-wider">
+                {language === "fa" ? "خریدهای من (آماده دانلود)" : "My Purchases (Ready to Download)"}
+              </span>
+              <span className="bg-gb-orange-light text-gb-bg font-extrabold px-1.5 py-0.5 rounded-full text-[10px] tabular-nums">
+                {downloads.length}
+              </span>
+            </div>
+            <span className="text-gb-fg-dark font-bold hover:text-gb-orange-light transition-colors text-sm">
+              {isDownloadsOpen ? "[-]" : "[+]"}
+            </span>
+          </div>
+
+          {isDownloadsOpen && (
+            <div className="mt-6 border-t border-gb-bg-soft/50 pt-4 space-y-3 max-h-60 overflow-y-auto pr-2">
+              {downloads.map((dl) => (
+                <div 
+                  key={dl.order_id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-gb-bg-soft bg-transparent hover:border-gb-orange-light/30 rounded gap-3 transition-colors"
+                  dir={language === "fa" ? "rtl" : "ltr"}
+                >
+                  <div className="min-w-0">
+                    <span className="font-bold text-gb-fg block truncate text-sm">
+                      {language === "fa" ? dl.title_fa : dl.title_en}
+                    </span>
+                    <span className="text-[10px] text-gb-fg-dark/50 block mt-1">
+                      {language === "fa" ? "کد سفارش: " : "Order ID: "} {dl.order_id} • {new Date(dl.created_at).toLocaleDateString(language === "fa" ? "fa-IR" : "en-US")}
+                    </span>
+                  </div>
+                  <a href={dl.download_url} className="shrink-0">
+                    <Button className="py-2.5 px-4 bg-gb-green-light text-gb-bg font-bold border-2 border-transparent hover:border-gb-green-light/20 shadow-sm transition-all text-xs">
+                      {t("checkout_download_btn") || "Download File"}
+                    </Button>
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Search & Filter Container */}
       <div

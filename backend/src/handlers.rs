@@ -296,7 +296,7 @@ pub async fn sitemap_xml(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
 
-    let base_url = std::env::var("BASE_URL").unwrap_or_else(|_| "https://yourdomain.com".to_string());
+    let base_url = std::env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
     
     let mut xml = String::new();
     xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -378,7 +378,7 @@ pub async fn sitemap_xml(
 }
 
 pub async fn robots_txt() -> (axum::http::HeaderMap, String) {
-    let base_url = std::env::var("BASE_URL").unwrap_or_else(|_| "https://yourdomain.com".to_string());
+    let base_url = std::env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
     
     let mut headers = axum::http::HeaderMap::new();
     headers.insert(axum::http::header::CONTENT_TYPE, "text/plain".parse().unwrap());
