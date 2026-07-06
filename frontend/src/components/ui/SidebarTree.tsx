@@ -2,23 +2,22 @@ import { useState } from 'react';
 import { Category } from '../../types';
 import { CaretRightIcon, CaretDownIcon, FolderIcon, FolderOpenIcon } from '../Icons';
 
-// Import Phosphor SVGs for preloaded category icons
-import linuxLogoSvg from '../../../phosphoricon/icons/linux-logo.svg?raw';
-import shieldCheckSvg from '../../../phosphoricon/icons/shield-check.svg?raw';
-import terminalSvg from '../../../phosphoricon/icons/terminal.svg?raw';
-import cpuSvg from '../../../phosphoricon/icons/cpu.svg?raw';
-import gearSvg from '../../../phosphoricon/icons/gear.svg?raw';
-import bookOpenSvg from '../../../phosphoricon/icons/book-open.svg?raw';
-import brainSvg from '../../../phosphoricon/icons/brain.svg?raw';
-import bookSvg from '../../../phosphoricon/icons/book.svg?raw';
-import fileTextSvg from '../../../phosphoricon/icons/file-text.svg?raw';
-import codeSvg from '../../../phosphoricon/icons/code.svg?raw';
-import databaseSvg from '../../../phosphoricon/icons/database.svg?raw';
-import globeSvg from '../../../phosphoricon/icons/globe.svg?raw';
-import paintBrushSvg from '../../../phosphoricon/icons/paint-brush.svg?raw';
-import usersSvg from '../../../phosphoricon/icons/users.svg?raw';
-import lightbulbSvg from '../../../phosphoricon/icons/lightbulb.svg?raw';
-import wrenchSvg from '../../../phosphoricon/icons/wrench.svg?raw';
+import linuxLogoSvg from '../../assets/icons/linux-logo.svg?raw';
+import shieldCheckSvg from '../../assets/icons/shield-check.svg?raw';
+import terminalSvg from '../../assets/icons/terminal.svg?raw';
+import cpuSvg from '../../assets/icons/cpu.svg?raw';
+import gearSvg from '../../assets/icons/gear.svg?raw';
+import bookOpenSvg from '../../assets/icons/book-open.svg?raw';
+import brainSvg from '../../assets/icons/brain.svg?raw';
+import bookSvg from '../../assets/icons/book.svg?raw';
+import fileTextSvg from '../../assets/icons/file-text.svg?raw';
+import codeSvg from '../../assets/icons/code.svg?raw';
+import databaseSvg from '../../assets/icons/database.svg?raw';
+import globeSvg from '../../assets/icons/globe.svg?raw';
+import paintBrushSvg from '../../assets/icons/paint-brush.svg?raw';
+import usersSvg from '../../assets/icons/users.svg?raw';
+import lightbulbSvg from '../../assets/icons/lightbulb.svg?raw';
+import wrenchSvg from '../../assets/icons/wrench.svg?raw';
 
 const iconMap: Record<string, string> = {
   'linux-logo': linuxLogoSvg,
