@@ -258,3 +258,23 @@ pub struct CheckoutResponse {
     #[serde(rename = "redirectUrl")]
     pub redirect_url: String,
 }
+
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, sqlx::FromRow)]
+pub struct Category {
+    pub id: String,
+    pub name: String,
+    #[serde(rename = "metaDomain")]
+    #[sqlx(rename = "meta_domain")]
+    pub meta_domain: String,
+    pub icon: String,
+    pub description: String,
+}
+
+#[derive(Debug, serde::Deserialize, Clone)]
+pub struct CreateCategoryRequest {
+    pub name: String,
+    #[serde(rename = "metaDomain")]
+    pub meta_domain: String,
+    pub icon: String,
+    pub description: String,
+}

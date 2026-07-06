@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { flushSync } from "react-dom";
 import { useLanguage } from "../contexts/LanguageContext";
 import { SEO } from "./SEO";
@@ -14,8 +14,8 @@ import {
   WrenchIcon,
 } from "./Icons";
 import { Link } from "react-router-dom";
-import { Product } from "../types";
-import { CategoryButton } from "./ui/CategoryButton";
+import { Product, Category } from "../types";
+import { SidebarTree } from "./ui/SidebarTree";
 import { useAuth } from "../contexts/AuthContext";
 
 export function Store() {
@@ -26,24 +26,24 @@ export function Store() {
   const [isDownloadsOpen, setIsDownloadsOpen] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      setLoadingDownloads(true);
-      fetch("/api/orders/my-downloads")
-        .then((res) => {
-          if (res.ok) return res.json();
-          return [];
-        })
-        .then((data) => {
-          setDownloads(data);
-          setLoadingDownloads(false);
-        })
-        .catch((err) => {
-          console.error("Failed to fetch downloads:", err);
-          setLoadingDownloads(false);
-        });
-    } else {
+    if (!user) {
       setDownloads([]);
+      return;
     }
+    const fetchDownloads = async () => {
+      setLoadingDownloads(true);
+      try {
+        const res = await fetch("/api/orders/my-downloads");
+        if (res.ok) {
+          setDownloads(await res.json());
+        }
+      } catch (err) {
+        console.error("Failed to fetch downloads:", err);
+      } finally {
+        setLoadingDownloads(false);
+      }
+    };
+    fetchDownloads();
   }, [user]);
 
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
@@ -53,6 +53,34 @@ export function Store() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [isMaintenance, setIsMaintenance] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => setCategories(data))
+      .catch(err => {
+        console.error("Failed to fetch categories:", err);
+        setCategories([
+          { id: 'book', name: 'Books', metaDomain: 'RESOURCES & DIGITAL PRODUCTS', icon: 'book', description: 'E-books and manuals' },
+          { id: 'latex', name: 'LaTeX Templates', metaDomain: 'RESOURCES & DIGITAL PRODUCTS', icon: 'file-text', description: 'LaTeX CVs and resumes' }
+        ]);
+      });
+  }, []);
+
+  const productTypeCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    categories.forEach(c => {
+      counts[c.id] = 0;
+    });
+    products.forEach(prod => {
+      if (prod.type) {
+        counts[prod.type] = (counts[prod.type] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [categories, products]);
+
   const [sortBy, setSortBy] = useState<"none" | "low-high" | "high-low">(
     "none",
   );
@@ -85,55 +113,43 @@ export function Store() {
   }, []);
 
   useEffect(() => {
-    const adminSecret = localStorage.getItem("adminSecret");
-    const isParamAdmin =
-      new URLSearchParams(window.location.search).get("admin") === "true";
-    const isAdmin = !!adminSecret || isParamAdmin;
+    const fetchData = async () => {
+      const adminSecret = localStorage.getItem("adminSecret");
+      const isParamAdmin = new URLSearchParams(window.location.search).get("admin") === "true";
+      const isAdmin = !!adminSecret || isParamAdmin;
 
-    const headers: HeadersInit = {};
-    if (adminSecret) {
-      headers["Authorization"] = `Bearer ${adminSecret}`;
-    }
+      const headers: HeadersInit = adminSecret ? { "Authorization": `Bearer ${adminSecret}` } : {};
 
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((settings) => {
-        if (settings.store_maintenance && !isAdmin) {
-          setIsMaintenance(true);
-          setLoading(false);
-          return;
+      try {
+        const settingsRes = await fetch("/api/settings");
+        if (settingsRes.ok) {
+          const settings = await settingsRes.json();
+          if (settings.store_maintenance && !isAdmin) {
+            setIsMaintenance(true);
+            setLoading(false);
+            return;
+          }
         }
-
-        fetch("/api/products", { headers })
-          .then((res) => {
-            if (res.status === 503) {
-              setIsMaintenance(true);
-              return [];
-            }
-            return res.json();
-          })
-          .then((data) => {
-            setProducts(data);
-            setLoading(false);
-          })
-          .catch((err) => {
-            console.error("Failed to fetch products:", err);
-            setLoading(false);
-          });
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error("Failed to fetch settings:", err);
-        fetch("/api/products", { headers })
-          .then((res) => res.json())
-          .then((data) => {
-            setProducts(data);
-            setLoading(false);
-          })
-          .catch((prodErr) => {
-            console.error("Failed to fetch products fallback:", prodErr);
-            setLoading(false);
-          });
-      });
+      }
+
+      try {
+        const prodRes = await fetch("/api/products", { headers });
+        if (prodRes.status === 503) {
+          setIsMaintenance(true);
+        } else if (prodRes.ok) {
+          const data = await prodRes.json();
+          setProducts(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch products:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -177,7 +193,7 @@ export function Store() {
     ? products.filter((product) => product.type === selectedType)
     : products;
 
-  const categories = filteredByTypeProducts.reduce(
+  const tagsCounts = filteredByTypeProducts.reduce(
     (acc, product) => {
       product.tags.forEach((tag) => {
         acc[tag] = (acc[tag] || 0) + 1;
@@ -187,7 +203,7 @@ export function Store() {
     {} as Record<string, number>,
   );
 
-  const categoryList = Object.entries(categories)
+  const categoryList = Object.entries(tagsCounts)
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
 
@@ -588,88 +604,80 @@ export function Store() {
         </div>
       </div>
 
-      {/* Banners Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-16">
-        <CategoryButton
-          active={selectedType === "book"}
-          dimmed={selectedType !== null && selectedType !== "book"}
-          postCountText={getCategoryCountText("book")}
-          onClick={() => handleTypeToggle("book")}
-          disabled={loading}
-          imgSrc="/book-pixel-art.png"
-          imgAlt="Book Banner"
-          label={t("book_cat")}
-          themeColor="orange"
-        />
-        <CategoryButton
-          active={selectedType === "latex"}
-          dimmed={selectedType !== null && selectedType !== "latex"}
-          postCountText={getCategoryCountText("latex")}
-          onClick={() => handleTypeToggle("latex")}
-          disabled={loading}
-          imgSrc="/latex-pixel-art.png"
-          imgAlt="LaTeX Banner"
-          label={t("latex_cat")}
-          themeColor="orange"
-        />
-      </div>
-
       {/* Main Content Layout */}
       <div className="flex flex-col md:flex-row gap-8 md:gap-12">
         {/* Sidebar */}
-        <aside className="w-full md:w-56 shrink-0">
-          <div
-            className="mb-4 text-lg font-bold text-gb-orange-light border-b border-gb-bg-soft pb-2 font-mono"
-            dir={language === "fa" ? "rtl" : "ltr"}
-          >
-            {t("micro_categories")}
-          </div>
-          {loading ? (
-            <p className="text-gb-fg-dark text-sm animate-pulse">
-              Loading tags...
-            </p>
-          ) : categoryList.length > 0 ? (
-            <ul className="flex md:flex-col gap-3 overflow-x-auto md:overflow-visible pb-4 md:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-              {categoryList.map(({ tag, count }) => {
-                const isActive = selectedTag === tag;
-                return (
-                  <li key={tag} className="shrink-0">
-                    <button
-                      onClick={() =>
-                        updateStateWithTransition(() =>
-                          setSelectedTag(isActive ? null : tag),
-                        )
-                      }
-                      className={`flex items-center justify-between w-full text-left px-3 py-2 rounded transition-all font-mono text-sm group ${
-                        isActive
-                          ? "bg-gb-orange-light/10 text-gb-orange-light border-l-2 border-gb-orange-light shadow-[inset_2px_0_0_0_rgba(255,160,102,0.2)]"
-                          : "hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent"
-                      }`}
-                      dir={language === "fa" ? "rtl" : "ltr"}
-                    >
-                      <span className="truncate mr-3 ml-3">#{tag}</span>
-                      <span
-                        className={`text-xs px-2 py-0.5 rounded-full tabular-nums ${
-                          isActive
-                            ? "bg-gb-orange-light/20 text-gb-orange-light"
-                            : "bg-gb-bg border border-gb-bg-soft group-hover:border-gb-fg-dark/30"
-                        }`}
-                      >
-                        {count}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : (
-            <p
-              className="text-sm font-mono text-gb-fg-dark"
+        <aside className="w-full md:w-56 shrink-0 space-y-6">
+          <div>
+            <div
+              className="mb-4 text-lg font-bold text-gb-orange-light border-b border-gb-bg-soft pb-2 font-mono"
               dir={language === "fa" ? "rtl" : "ltr"}
             >
-              {t("no_categories")}
-            </p>
-          )}
+              {t("categories_title") || "Categories"}
+            </div>
+            <SidebarTree
+              categories={categories}
+              selectedType={selectedType}
+              onSelectType={(type) => updateStateWithTransition(() => setSelectedType(type))}
+              counts={productTypeCounts}
+              metaDomains={["RESOURCES & DIGITAL PRODUCTS"]}
+            />
+          </div>
+
+          <div>
+            <div
+              className="mb-4 text-lg font-bold text-gb-orange-light border-b border-gb-bg-soft pb-2 font-mono"
+              dir={language === "fa" ? "rtl" : "ltr"}
+            >
+              {t("micro_categories")}
+            </div>
+            {loading ? (
+              <p className="text-gb-fg-dark text-sm animate-pulse">
+                Loading tags...
+              </p>
+            ) : categoryList.length > 0 ? (
+              <ul className="flex md:flex-col gap-3 overflow-x-auto md:overflow-visible pb-4 md:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] space-y-1">
+                {categoryList.map(({ tag, count }) => {
+                  const isActive = selectedTag === tag;
+                  return (
+                    <li key={tag} className="shrink-0">
+                      <button
+                        onClick={() =>
+                          updateStateWithTransition(() =>
+                            setSelectedTag(isActive ? null : tag),
+                          )
+                        }
+                        className={`flex items-center justify-between w-full text-left px-3 py-2 rounded-none transition-all font-mono text-sm group cursor-pointer border-l-2 ${
+                          isActive
+                            ? "bg-gb-orange-light/10 text-gb-orange-light border-gb-orange-light shadow-[inset_2px_0_0_0_rgba(255,160,102,0.2)]"
+                            : "hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-transparent"
+                        }`}
+                        dir={language === "fa" ? "rtl" : "ltr"}
+                      >
+                        <span className="truncate mr-3 ml-3">#{tag}</span>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-none tabular-nums ${
+                            isActive
+                              ? "bg-gb-orange-light/20 text-gb-orange-light"
+                              : "bg-gb-bg border border-gb-bg-soft group-hover:border-gb-fg-dark/30"
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p
+                className="text-sm font-mono text-gb-fg-dark"
+                dir={language === "fa" ? "rtl" : "ltr"}
+              >
+                {t("no_categories")}
+              </p>
+            )}
+          </div>
         </aside>
 
         {/* Product Grid */}

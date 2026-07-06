@@ -1,471 +1,99 @@
 import { SVGProps } from 'react';
 
-// Custom interface to allow size prop that maps to width/height
+// Import raw SVGs from phosphoricon/icons directory
+import terminalWindowSvg from '../../phosphoricon/icons/terminal-window.svg?raw';
+import githubLogoSvg from '../../phosphoricon/icons/github-logo.svg?raw';
+import twitterLogoSvg from '../../phosphoricon/icons/twitter-logo.svg?raw';
+import envelopeSimpleSvg from '../../phosphoricon/icons/envelope-simple.svg?raw';
+import calendarBlankSvg from '../../phosphoricon/icons/calendar-blank.svg?raw';
+import clockSvg from '../../phosphoricon/icons/clock.svg?raw';
+import arrowRightSvg from '../../phosphoricon/icons/arrow-right.svg?raw';
+import arrowLeftSvg from '../../phosphoricon/icons/arrow-left.svg?raw';
+import tagSvg from '../../phosphoricon/icons/tag.svg?raw';
+import bugSvg from '../../phosphoricon/icons/bug.svg?raw';
+import magnifyingGlassSvg from '../../phosphoricon/icons/magnifying-glass.svg?raw';
+import xSvg from '../../phosphoricon/icons/x.svg?raw';
+import slidersHorizontalSvg from '../../phosphoricon/icons/sliders-horizontal.svg?raw';
+import wrenchSvg from '../../phosphoricon/icons/wrench.svg?raw';
+import pencilSvg from '../../phosphoricon/icons/pencil.svg?raw';
+import trashSvg from '../../phosphoricon/icons/trash.svg?raw';
+import plusSvg from '../../phosphoricon/icons/plus.svg?raw';
+import signOutSvg from '../../phosphoricon/icons/sign-out.svg?raw';
+import checkSquareSvg from '../../phosphoricon/icons/check-square.svg?raw';
+import squareSvg from '../../phosphoricon/icons/square.svg?raw';
+import squaresFourSvg from '../../phosphoricon/icons/squares-four.svg?raw';
+import chatTeardropSvg from '../../phosphoricon/icons/chat-teardrop.svg?raw';
+import fileTextSvg from '../../phosphoricon/icons/file-text.svg?raw';
+import gearSvg from '../../phosphoricon/icons/gear.svg?raw';
+import arrowUpSvg from '../../phosphoricon/icons/arrow-up.svg?raw';
+import robotSvg from '../../phosphoricon/icons/robot.svg?raw';
+import shoppingCartSvg from '../../phosphoricon/icons/shopping-cart.svg?raw';
+import checkSvg from '../../phosphoricon/icons/check.svg?raw';
+import copySvg from '../../phosphoricon/icons/copy.svg?raw';
+import spinnerGapSvg from '../../phosphoricon/icons/spinner-gap.svg?raw';
+import checkCircleSvg from '../../phosphoricon/icons/check-circle.svg?raw';
+import xCircleSvg from '../../phosphoricon/icons/x-circle.svg?raw';
+import caretRightSvg from '../../phosphoricon/icons/caret-right.svg?raw';
+import caretDownSvg from '../../phosphoricon/icons/caret-down.svg?raw';
+import folderSvg from '../../phosphoricon/icons/folder.svg?raw';
+import folderOpenSvg from '../../phosphoricon/icons/folder-open.svg?raw';
+
 interface IconProps extends SVGProps<SVGSVGElement> {
   size?: number | string;
 }
 
-export function TerminalWindowIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
+function getSvgInner(rawSvg: string): string {
+  const match = rawSvg.match(/<svg[^>]*>([\s\S]*?)<\/svg>/i);
+  return match ? match[1] : '';
+}
+
+function createIcon(svgContent: string) {
+  return ({ size, ...props }: IconProps) => (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size || "1em"}
+      height={size || "1em"}
+      viewBox="0 0 256 256"
+      fill="currentColor"
+      dangerouslySetInnerHTML={{ __html: getSvgInner(svgContent) }}
       {...props}
-    >
-      <path d="M128,128a8,8,0,0,1-3,6.25l-40,32a8,8,0,1,1-10-12.5L107.19,128,75,102.25a8,8,0,1,1,10-12.5l40,32A8,8,0,0,1,128,128Zm48,24H136a8,8,0,0,0,0,16h40a8,8,0,0,0,0-16Zm56-96V200a16,16,0,0,1-16,16H40a16,16,0,0,1-16-16V56A16,16,0,0,1,40,40H216A16,16,0,0,1,232,56ZM216,200V56H40V200H216Z"/>
-    </svg>
+    />
   );
 }
 
-export function GithubLogoIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M208.31,75.68A59.78,59.78,0,0,0,202.93,28,8,8,0,0,0,196,24a59.75,59.75,0,0,0-48,24H124A59.75,59.75,0,0,0,76,24a8,8,0,0,0-6.93,4,59.78,59.78,0,0,0-5.38,47.68A58.14,58.14,0,0,0,56,104v8a56.06,56.06,0,0,0,48.44,55.47A39.8,39.8,0,0,0,96,192v8H72a24,24,0,0,1-24-24A40,40,0,0,0,8,136a8,8,0,0,0,0,16,24,24,0,0,1,24,24,40,40,0,0,0,40,40H96v16a8,8,0,0,0,16,0V192a24,24,0,0,1,48,0v40a8,8,0,0,0,16,0V192a39.8,39.8,0,0,0-8.44-24.53A56.06,56.06,0,0,0,216,112v-8A58.14,58.14,0,0,0,208.31,75.68ZM200,112a40,40,0,0,1-40,40H112a40,40,0,0,1-40-40v-8a41.74,41.74,0,0,1,6.9-22.48A8,8,0,0,0,80,73.83a43.81,43.81,0,0,1,.79-33.58,43.88,43.88,0,0,1,32.32,20.06A8,8,0,0,0,119.82,64h32.35a8,8,0,0,0,6.74-3.69,43.87,43.87,0,0,1,32.32-20.06A43.81,43.81,0,0,1,192,73.83a8.09,8.09,0,0,0,1,7.65A41.72,41.72,0,0,1,200,104Z"/>
-    </svg>
-  );
-}
-
-export function TwitterLogoIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M247.39,68.94A8,8,0,0,0,240,64H209.57A48.66,48.66,0,0,0,168.1,40a46.91,46.91,0,0,0-33.75,13.7A47.9,47.9,0,0,0,120,88v6.09C79.74,83.47,46.81,50.72,46.46,50.37a8,8,0,0,0-13.65,4.92c-4.31,47.79,9.57,79.77,22,98.18a110.93,110.93,0,0,0,21.88,24.2c-15.23,17.53-39.21,26.74-39.47,26.84a8,8,0,0,0-3.85,11.93c.75,1.12,3.75,5.05,11.08,8.72C53.51,229.7,65.48,232,80,232c70.67,0,129.72-54.42,135.75-124.44l29.91-29.9A8,8,0,0,0,247.39,68.94Zm-45,29.41a8,8,0,0,0-2.32,5.14C196,166.58,143.28,216,80,216c-10.56,0-18-1.4-23.22-3.08,11.51-6.25,27.56-17,37.88-32.48A8,8,0,0,0,92,169.08c-.47-.27-43.91-26.34-44-96,16,13,45.25,33.17,78.67,38.79A8,8,0,0,0,136,104V88a32,32,0,0,1,9.6-22.92A30.94,30.94,0,0,1,167.9,56c12.66.16,24.49,7.88,29.44,19.21A8,8,0,0,0,204.67,80h16Z"/>
-    </svg>
-  );
-}
-
-export function EnvelopeSimpleIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M224,48H32a8,8,0,0,0-8,8V192a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A8,8,0,0,0,224,48ZM203.43,64,128,133.15,52.57,64ZM216,192H40V74.19l82.59,75.71a8,8,0,0,0,10.82,0L216,74.19V192Z"/>
-    </svg>
-  );
-}
-
-export function CalendarBlankIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z"/>
-    </svg>
-  );
-}
-
-export function ClockIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm64-88a8,8,0,0,1-8,8H128a8,8,0,0,1-8-8V72a8,8,0,0,1,16,0v48h48A8,8,0,0,1,192,128Z"/>
-    </svg>
-  );
-}
-
-export function ArrowRightIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z"/>
-    </svg>
-  );
-}
-
-export function ArrowLeftIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M224,128a8,8,0,0,1-8,8H59.31l58.35,58.34a8,8,0,0,1-11.32,11.32l-72-72a8,8,0,0,1,0-11.32l72-72a8,8,0,0,1,11.32,11.32L59.31,120H216A8,8,0,0,1,224,128Z"/>
-    </svg>
-  );
-}
-
-export function TagIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M243.31,136,144,36.69A15.86,15.86,0,0,0,132.69,32H40a8,8,0,0,0-8,8v92.69A15.86,15.86,0,0,0,36.69,144L136,243.31a16,16,0,0,0,22.63,0l84.68-84.68a16,16,0,0,0,0-22.63Zm-96,96L48,132.69V48h84.69L232,147.31ZM96,84A12,12,0,1,1,84,72,12,12,0,0,1,96,84Z"/>
-    </svg>
-  );
-}
-
-export function BugIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M144,92a12,12,0,1,1,12,12A12,12,0,0,1,144,92ZM100,80a12,12,0,1,0,12,12A12,12,0,0,0,100,80Zm116,64A87.76,87.76,0,0,1,213,167l22.24,9.72A8,8,0,0,1,232,192a7.89,7.89,0,0,1-3.2-.67L207.38,182a88,88,0,0,1-158.76,0L27.2,191.33A7.89,7.89,0,0,1,24,192a8,8,0,0,1-3.2-15.33L43,167A87.76,87.76,0,0,1,40,144v-8H16a8,8,0,0,1,0-16H40v-8a87.76,87.76,0,0,1,3-23L20.8,79.33a8,8,0,1,1,6.4-14.66L48.62,74a88,88,0,0,1,158.76,0l21.42-9.36a8,8,0,0,1,6.4,14.66L213,89.05a87.76,87.76,0,0,1,3,23v8h24a8,8,0,0,1,0,16H216ZM56,120H200v-8a72,72,0,0,0-144,0Zm64,95.54V136H56v8A72.08,72.08,0,0,0,120,215.54ZM200,144v-8H136v79.54A72.08,72.08,0,0,0,200,144Z"/>
-    </svg>
-  );
-}
-
-export function SearchIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"/>
-    </svg>
-  );
-}
-
-export function XIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/>
-    </svg>
-  );
-}
-
-export function SlidersHorizontalIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M40,88H73a32,32,0,0,0,62,0h81a8,8,0,0,0,0-16H135a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16Zm64-24A16,16,0,1,1,88,80,16,16,0,0,1,104,64ZM216,168H199a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16h97a32,32,0,0,0,62,0h17a8,8,0,0,0,0-16Zm-48,24a16,16,0,1,1,16-16A16,16,0,0,1,168,192Z"/>
-    </svg>
-  );
-}
-
-export function WrenchIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M226.76,69a8,8,0,0,0-12.84-2.88l-40.3,37.19-17.23-3.7-3.7-17.23,37.19-40.3A8,8,0,0,0,187,29.24,72,72,0,0,0,88,96,72.34,72.34,0,0,0,94,124.94L33.79,177c-.15.12-.29.26-.43.39a32,32,0,0,0,45.26,45.26c.13-.13.27-.28.39-.42L131.06,162A72,72,0,0,0,232,96,71.56,71.56,0,0,0,226.76,69ZM160,152a56.14,56.14,0,0,1-27.07-7,8,8,0,0,0-9.92,1.77L67.11,211.51a16,16,0,0,1-22.62-22.62L109.18,133a8,8,0,0,0,1.77-9.93,56,56,0,0,1,58.36-82.31l-31.2,33.81a8,8,0,0,0-1.94,7.1L141.83,108a8,8,0,0,0,6.14,6.14l26.35,5.66a8,8,0,0,0,7.1-1.94l33.81-31.2A56.06,56.06,0,0,1,160,152Z"/>
-    </svg>
-  );
-}
-
-export function PencilIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M227.31,73.37,182.63,28.68a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31L227.31,96a16,16,0,0,0,0-22.63ZM92.69,208H48V163.31l88-88L180.69,120ZM192,108.68,147.31,64l24-24L216,84.68Z"/>
-    </svg>
-  );
-}
-
-export function TrashIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"/>
-    </svg>
-  );
-}
-
-export function PlusIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/>
-    </svg>
-  );
-}
-
-export function LogOutIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M120,216a8,8,0,0,1-8,8H48a8,8,0,0,1-8-8V40a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H56V208h56A8,8,0,0,1,120,216Zm109.66-93.66-40-40a8,8,0,0,0-11.32,11.32L204.69,120H112a8,8,0,0,0,0,16h92.69l-26.35,26.34a8,8,0,0,0,11.32,11.32l40-40A8,8,0,0,0,229.66,122.34Z"/>
-    </svg>
-  );
-}
-
-export function CheckSquareIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M173.66,98.34a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34ZM224,48V208a16,16,0,0,1-16,16H48a16,16,0,0,1-16-16V48A16,16,0,0,1,48,32H208A16,16,0,0,1,224,48ZM208,208V48H48V208H208Z"/>
-    </svg>
-  );
-}
-
-export function SquareIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M208,32H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32Zm0,176H48V48H208V208Z"/>
-    </svg>
-  );
-}
-
-export function LayoutDashboardIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M216,40H40A16,16,0,0,0,24,56V200a16,16,0,0,0,16,16H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Zm0,16V96H40V56ZM40,112H96v88H40Zm176,88H112V112H216v88Z"/>
-    </svg>
-  );
-}
-
-export function MessageSquareIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M216,48H40A16,16,0,0,0,24,64V224a15.85,15.85,0,0,0,9.24,14.5A16.13,16.13,0,0,0,40,240a15.89,15.89,0,0,0,10.25-3.78l.09-.07L83,208H216a16,16,0,0,0,16-16V64A16,16,0,0,0,216,48ZM40,224h0ZM216,192H80a8,8,0,0,0-5.23,1.95L40,224V64H216ZM88,112a8,8,0,0,1,8-8h64a8,8,0,0,1,0,16H96A8,8,0,0,1,88,112Zm0,32a8,8,0,0,1,8-8h64a8,8,0,1,1,0,16H96A8,8,0,0,1,88,144Z"/>
-    </svg>
-  );
-}
-
-export function FileTextIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M213.66,82.34l-56-56A8,8,0,0,0,152,24H56A16,16,0,0,0,40,40V216a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V88A8,8,0,0,0,213.66,82.34ZM160,51.31,188.69,80H160ZM200,216H56V40h88V88a8,8,0,0,0,8,8h48V216Zm-32-80a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,136Zm0,32a8,8,0,0,1-8,8H96a8,8,0,0,1,0-16h64A8,8,0,0,1,168,168Z"/>
-    </svg>
-  );
-}
-
-export function SettingsIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M128,80a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Zm88-29.84q.06-2.16,0-4.32l14.92-18.64a8,8,0,0,0,1.48-7.06,107.21,107.21,0,0,0-10.88-26.25,8,8,0,0,0-6-3.93l-23.72-2.64q-1.48-1.56-3-3L186,40.54a8,8,0,0,0-3.94-6,107.71,107.71,0,0,0-26.25-10.87,8,8,0,0,0-7.06,1.49L130.16,40Q128,40,125.84,40L107.2,25.11a8,8,0,0,0-7.06-1.48A107.6,107.6,0,0,0,73.89,34.51a8,8,0,0,0-3.93,6L67.32,64.27q-1.56,1.49-3,3L40.54,70a8,8,0,0,0-6,3.94,107.71,107.71,0,0,0-10.87,26.25,8,8,0,0,0,1.49,7.06L40,125.84Q40,128,40,130.16L25.11,148.8a8,8,0,0,0-1.48,7.06,107.21,107.21,0,0,0,10.88,26.25,8,8,0,0,0,6,3.93l23.72,2.64q1.49,1.56,3,3L70,215.46a8,8,0,0,0,3.94,6,107.71,107.71,0,0,0,26.25,10.87,8,8,0,0,0,7.06-1.49L125.84,216q2.16.06,4.32,0l18.64,14.92a8,8,0,0,0,7.06,1.48,107.21,107.21,0,0,0,26.25-10.88,8,8,0,0,0,3.93-6l2.64-23.72q1.56-1.48,3-3L215.46,186a8,8,0,0,0,6-3.94,107.71,107.71,0,0,0,10.87-26.25,8,8,0,0,0-1.49-7.06Zm-16.1-6.5a73.93,73.93,0,0,1,0,8.68,8,8,0,0,0,1.74,5.48l14.19,17.73a91.57,91.57,0,0,1-6.23,15L187,173.11a8,8,0,0,0-5.1,2.64,74.11,74.11,0,0,1-6.14,6.14,8,8,0,0,0-2.64,5.1l-2.51,22.58a91.32,91.32,0,0,1-15,6.23l-17.74-14.19a8,8,0,0,0-5-1.75h-.48a73.93,73.93,0,0,1-8.68,0,8,8,0,0,0-5.48,1.74L100.45,215.8a91.57,91.57,0,0,1-15-6.23L82.89,187a8,8,0,0,0-2.64-5.1,74.11,74.11,0,0,1-6.14-6.14,8,8,0,0,0-5.1-2.64L46.43,170.6a91.32,91.32,0,0,1-6.23-15l14.19-17.74a8,8,0,0,0,1.74-5.48,73.93,73.93,0,0,1,0-8.68,8,8,0,0,0-1.74-5.48L40.2,100.45a91.57,91.57,0,0,1,6.23-15L69,82.89a8,8,0,0,0,5.1-2.64,74.11,74.11,0,0,1,6.14-6.14A8,8,0,0,0,82.89,69L85.4,46.43a91.32,91.32,0,0,1,15-6.23l17.74,14.19a8,8,0,0,0,5.48,1.74,73.93,73.93,0,0,1,8.68,0,8,8,0,0,0,5.48-1.74L155.55,40.2a91.57,91.57,0,0,1,15,6.23L173.11,69a8,8,0,0,0,2.64,5.1,74.11,74.11,0,0,1,6.14,6.14,8,8,0,0,0,5.1,2.64l22.58,2.51a91.32,91.32,0,0,1,6.23,15l-14.19,17.74A8,8,0,0,0,199.87,123.66Z"/>
-    </svg>
-  );
-}
-
-export function ArrowUpIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/>
-    </svg>
-  );
-}
-
-export function BotIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M200,48H136V16a8,8,0,0,0-16,0V48H56A32,32,0,0,0,24,80V192a32,32,0,0,0,32,32H200a32,32,0,0,0,32-32V80A32,32,0,0,0,200,48Zm16,144a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V80A16,16,0,0,1,56,64H200a16,16,0,0,1,16,16Zm-52-56H92a28,28,0,0,0,0,56h72a28,28,0,0,0,0-56Zm-24,16v24H116V152ZM80,164a12,12,0,0,1,12-12h8v24H92A12,12,0,0,1,80,164Zm84,12h-8V152h8a12,12,0,0,1,0,24ZM72,108a12,12,0,1,1,12,12A12,12,0,0,1,72,108Zm88,0a12,12,0,1,1,12,12A12,12,0,0,1,160,108Z"/>
-    </svg>
-  );
-}
-
-export function ShoppingCartIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M230.14,58.87A8,8,0,0,0,224,56H62.68L56.6,22.57A8,8,0,0,0,48.73,16H24a8,8,0,0,0,0,16h18L67.56,172.29a24,24,0,0,0,5.33,11.27,28,28,0,1,0,44.4,8.44h45.42A27.75,27.75,0,0,0,160,204a28,28,0,1,0,28-28H91.17a8,8,0,0,1-7.87-6.57L80.13,152h116a24,24,0,0,0,23.61-19.71l12.16-66.86A8,8,0,0,0,230.14,58.87ZM104,204a12,12,0,1,1-12-12A12,12,0,0,1,104,204Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,200,204Zm4-74.57A8,8,0,0,1,196.1,136H77.22L65.59,72H214.41Z"/>
-    </svg>
-  );
-}
-
-export function CheckIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"/>
-    </svg>
-  );
-}
-
-export function LoaderIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M232,128a104,104,0,0,1-208,0c0-41,23.81-78.36,60.66-95.27a8,8,0,0,1,6.68,14.54C60.15,61.59,40,93.27,40,128a88,88,0,0,0,176,0c0-34.73-20.15-66.41-51.34-80.73a8,8,0,0,1,6.68-14.54C208.19,49.64,232,87,232,128Z"/>
-    </svg>
-  );
-}
-
-export function CheckCircleIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm45.66-117.66a8,8,0,0,1,0,11.32l-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35A8,8,0,0,1,173.66,98.34Z"/>
-    </svg>
-  );
-}
-
-export function XCircleIcon({ size, ...props }: IconProps) {
-  return (
-    <svg 
-      xmlns="http://www.w3.org/2000/svg" 
-      width={size || "1em"} 
-      height={size || "1em"} 
-      viewBox="0 0 256 256" 
-      fill="currentColor" 
-      {...props}
-    >
-      <path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm40-128a8,8,0,0,1,0,11.32L139.31,128l28.69,28.69a8,8,0,1,1-11.32,11.32L128,139.31l-28.69,28.69a8,8,0,0,1-11.32-11.32L116.69,128,88,99.31a8,8,0,0,1,11.32-11.32L128,116.69l28.69-28.69A8,8,0,0,1,168,88Z"/>
-    </svg>
-  );
-}
+export const TerminalWindowIcon = createIcon(terminalWindowSvg);
+export const GithubLogoIcon = createIcon(githubLogoSvg);
+export const TwitterLogoIcon = createIcon(twitterLogoSvg);
+export const EnvelopeSimpleIcon = createIcon(envelopeSimpleSvg);
+export const CalendarBlankIcon = createIcon(calendarBlankSvg);
+export const ClockIcon = createIcon(clockSvg);
+export const ArrowRightIcon = createIcon(arrowRightSvg);
+export const ArrowLeftIcon = createIcon(arrowLeftSvg);
+export const TagIcon = createIcon(tagSvg);
+export const BugIcon = createIcon(bugSvg);
+export const SearchIcon = createIcon(magnifyingGlassSvg);
+export const XIcon = createIcon(xSvg);
+export const SlidersHorizontalIcon = createIcon(slidersHorizontalSvg);
+export const WrenchIcon = createIcon(wrenchSvg);
+export const PencilIcon = createIcon(pencilSvg);
+export const TrashIcon = createIcon(trashSvg);
+export const PlusIcon = createIcon(plusSvg);
+export const LogOutIcon = createIcon(signOutSvg);
+export const CheckSquareIcon = createIcon(checkSquareSvg);
+export const SquareIcon = createIcon(squareSvg);
+export const LayoutDashboardIcon = createIcon(squaresFourSvg);
+export const MessageSquareIcon = createIcon(chatTeardropSvg);
+export const FileTextIcon = createIcon(fileTextSvg);
+export const SettingsIcon = createIcon(gearSvg);
+export const ArrowUpIcon = createIcon(arrowUpSvg);
+export const BotIcon = createIcon(robotSvg);
+export const ShoppingCartIcon = createIcon(shoppingCartSvg);
+export const CheckIcon = createIcon(checkSvg);
+export const CopyIcon = createIcon(copySvg);
+export const LoaderIcon = createIcon(spinnerGapSvg);
+export const CheckCircleIcon = createIcon(checkCircleSvg);
+export const XCircleIcon = createIcon(xCircleSvg);
+export const CaretRightIcon = createIcon(caretRightSvg);
+export const CaretDownIcon = createIcon(caretDownSvg);
+export const FolderIcon = createIcon(folderSvg);
+export const FolderOpenIcon = createIcon(folderOpenSvg);

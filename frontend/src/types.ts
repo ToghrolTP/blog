@@ -57,3 +57,11 @@ export interface Product {
   photos?: string[];
   translations: ProductTranslation[];
 }
+
+export interface Category {
+  id: string;
+  name: string;
+  metaDomain: string;
+  icon: string;
+  description: string;
+}

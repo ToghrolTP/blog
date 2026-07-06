@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { flushSync } from 'react-dom';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { SearchIcon, XIcon, SlidersHorizontalIcon, WrenchIcon } from './components/Icons';
@@ -12,7 +12,7 @@ import { ProductDetail } from './components/ProductDetail';
 import { CheckoutVerify } from './components/CheckoutVerify';
 import { About } from './components/About';
 import { TerminalWindowIcon } from './components/Icons';
-import { Post } from './types';
+import { Post, Category } from './types';
 import { UpvoteProvider } from './contexts/UpvoteContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
@@ -21,6 +21,7 @@ import { Button } from './components/ui/Button';
 import { CategoryButton } from './components/ui/CategoryButton';
 import { Pagination } from './components/ui/Pagination';
 import { FeedbackButton } from './components/FeedbackButton';
+import { SidebarTree } from './components/ui/SidebarTree';
 
 function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
@@ -119,16 +120,46 @@ function Home() {
 
   const languagePosts = posts.filter(p => p.translations?.some(t => t.language === language));
 
-  const getCategoryCountText = (type: string) => {
-    const count = languagePosts.filter((p) => p.type === type).length;
-    if (language === 'fa') {
-      return `${new Intl.NumberFormat('fa-IR').format(count)} مطلب`;
-    }
-    return `${count} ${count === 1 ? 'post' : 'posts'}`;
-  };
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    fetch('/api/categories')
+      .then(res => res.json())
+      .then(data => setCategories(data))
+      .catch(err => {
+        console.error("Failed to fetch categories:", err);
+        setCategories([
+          { id: 'linux', name: 'Operating Systems', metaDomain: 'SYSTEMS & INFRASTRUCTURE', icon: 'linux-logo', description: 'Linux kernel, shell, and OS internals' },
+          { id: 'cybersecurity', name: 'Cybersecurity', metaDomain: 'SYSTEMS & INFRASTRUCTURE', icon: 'shield-check', description: 'Security analysis, cryptography, and audits' },
+          { id: 'terminal', name: 'Terminal', metaDomain: 'SYSTEMS & INFRASTRUCTURE', icon: 'terminal', description: 'Shell scripting and command-line efficiency' },
+          { id: 'backend', name: 'Backend Engineering', metaDomain: 'SOFTWARE DEVELOPMENT', icon: 'cpu', description: 'Database design, microservices, and APIs' },
+          { id: 'devops', name: 'DevOps', metaDomain: 'SOFTWARE DEVELOPMENT', icon: 'gear', description: 'CI/CD pipelines, Docker, and automation' },
+          { id: 'academic', name: 'Academic', metaDomain: 'SOFTWARE DEVELOPMENT', icon: 'book-open', description: 'Computer science research, papers, and theory' },
+          { id: 'ai', name: 'AI', metaDomain: 'AI & DATA SCIENCE', icon: 'brain', description: 'Artificial intelligence and neural networks' }
+        ]);
+      });
+  }, []);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    categories.forEach(c => {
+      counts[c.id] = 0;
+    });
+    languagePosts.forEach(post => {
+      if (post.type) {
+        post.type.split(',').map(c => c.trim()).forEach(t => {
+          counts[t] = (counts[t] || 0) + 1;
+        });
+      }
+    });
+    return counts;
+  }, [categories, languagePosts]);
 
   const filteredByTypePosts = selectedType 
-    ? languagePosts.filter(post => post.type === selectedType)
+    ? languagePosts.filter(post => {
+        if (!post.type) return false;
+        return post.type.split(',').map(c => c.trim()).includes(selectedType);
+      })
     : languagePosts;
 
   const tagCounts = filteredByTypePosts.reduce((acc, post) => {
@@ -350,63 +381,7 @@ function Home() {
         <p className="text-lg leading-relaxed" dangerouslySetInnerHTML={{ __html: descHtml }}></p>
       </div>
 
-      {/* Category Banners Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-        <CategoryButton
-          active={selectedType === 'linux'}
-          dimmed={selectedType !== null && selectedType !== 'linux'}
-          postCountText={getCategoryCountText('linux')}
-          onClick={() => handleTypeToggle('linux')}
-          imgSrc="/chatgpt-linux-pixel-art.png"
-          imgAlt={t('linux_cat')}
-          label={t('linux_cat')}
-        />
-        <CategoryButton
-          active={selectedType === 'cybersecurity'}
-          dimmed={selectedType !== null && selectedType !== 'cybersecurity'}
-          postCountText={getCategoryCountText('cybersecurity')}
-          onClick={() => handleTypeToggle('cybersecurity')}
-          imgSrc="/cybersecurity-guy.png"
-          imgAlt={t('cybersecurity_cat')}
-          label={t('cybersecurity_cat')}
-        />
-        <CategoryButton
-          active={selectedType === 'backend'}
-          dimmed={selectedType !== null && selectedType !== 'backend'}
-          postCountText={getCategoryCountText('backend')}
-          onClick={() => handleTypeToggle('backend')}
-          imgSrc="/backend_gear_icon_gruvbox_transparent.png"
-          imgAlt={t('backend_cat')}
-          label={t('backend_cat')}
-        />
-        <CategoryButton
-          active={selectedType === 'devops'}
-          dimmed={selectedType !== null && selectedType !== 'devops'}
-          postCountText={getCategoryCountText('devops')}
-          onClick={() => handleTypeToggle('devops')}
-          imgSrc="/devops_icon_gruvbox.png"
-          imgAlt={t('devops_cat')}
-          label={t('devops_cat')}
-        />
-        <CategoryButton
-          active={selectedType === 'terminal'}
-          dimmed={selectedType !== null && selectedType !== 'terminal'}
-          postCountText={getCategoryCountText('terminal')}
-          onClick={() => handleTypeToggle('terminal')}
-          imgSrc="/terminal_personal_computer_icon_gruvbox.png"
-          imgAlt={t('terminal_cat')}
-          label={t('terminal_cat')}
-        />
-        <CategoryButton
-          active={selectedType === 'academic'}
-          dimmed={selectedType !== null && selectedType !== 'academic'}
-          postCountText={getCategoryCountText('academic')}
-          onClick={() => handleTypeToggle('academic')}
-          imgSrc="/article_icon_gruvbox.png"
-          imgAlt={t('academic_cat')}
-          label={t('academic_cat')}
-        />
-      </div>
+
 
       {/* Search & Filter Container */}
       <div className="mb-12 flex items-center gap-3 max-w-xl relative" ref={filterRef}>
@@ -515,8 +490,22 @@ function Home() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-8 md:gap-12">
-        <aside className="w-full md:w-56 shrink-0">
-          <div className="mb-4 text-lg font-bold text-gb-orange-light border-b border-gb-bg-soft pb-2 font-mono" dir={language === 'fa' ? 'rtl' : 'ltr'}>
+        <aside className="w-full md:w-56 shrink-0 space-y-6">
+          <div>
+            <div className="mb-4 text-lg font-bold text-gb-orange-light border-b border-gb-bg-soft pb-2 font-mono" dir={language === 'fa' ? 'rtl' : 'ltr'}>
+              {t('categories_title') || 'Categories'}
+            </div>
+            <SidebarTree
+              categories={categories}
+              selectedType={selectedType}
+              onSelectType={(type) => updateStateWithTransition(() => setSelectedType(type))}
+              counts={categoryCounts}
+              metaDomains={['SYSTEMS & INFRASTRUCTURE', 'SOFTWARE DEVELOPMENT', 'AI & DATA SCIENCE']}
+            />
+          </div>
+
+          <div>
+            <div className="mb-4 text-lg font-bold text-gb-orange-light border-b border-gb-bg-soft pb-2 font-mono" dir={language === 'fa' ? 'rtl' : 'ltr'}>
             {t('micro_categories')}
           </div>
           {sortedTags.length > 0 ? (
@@ -548,6 +537,7 @@ function Home() {
           ) : (
             <p className="text-sm font-mono text-gb-fg-dark" dir={language === 'fa' ? 'rtl' : 'ltr'}>{t('no_categories')}</p>
           )}
+          </div>
         </aside>
 
         <div className="flex-1 min-w-0">

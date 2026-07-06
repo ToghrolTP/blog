@@ -7,7 +7,7 @@ use sqlx::SqlitePool;
 
 use crate::models::{PostDb, PostResponse, PostTranslationDb, PostTranslationResponse};
 
-async fn is_under_maintenance(pool: &SqlitePool, key: &str) -> bool {
+pub async fn is_under_maintenance(pool: &SqlitePool, key: &str) -> bool {
     let row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = ?")
         .bind(key)
         .fetch_optional(pool)
@@ -150,6 +150,10 @@ pub async fn create_post(
     let tags_json = serde_json::to_string(&payload.tags).unwrap_or_else(|_| "[]".to_string());
     
     let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    sqlx::query("PRAGMA defer_foreign_keys = ON")
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     sqlx::query("INSERT INTO posts (id, date, tags, summary, content, read_time, upvotes, thumbnail_url, type) VALUES (?, ?, ?, '', '', 0, 0, ?, ?)")
         .bind(&id)
@@ -188,11 +192,17 @@ pub async fn update_post(
 ) -> Result<Json<PostResponse>, (StatusCode, String)> {
     check_auth(&headers)?;
 
+    let final_id = payload.id.clone();
     let tags_json = serde_json::to_string(&payload.tags).unwrap_or_else(|_| "[]".to_string());
     
     let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    sqlx::query("PRAGMA defer_foreign_keys = ON")
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let result = sqlx::query("UPDATE posts SET date = ?, tags = ?, thumbnail_url = ?, type = ? WHERE id = ?")
+    let result = sqlx::query("UPDATE posts SET id = ?, date = ?, tags = ?, thumbnail_url = ?, type = ? WHERE id = ?")
+        .bind(&final_id)
         .bind(&payload.date)
         .bind(&tags_json)
         .bind(&payload.thumbnail_url)
@@ -206,15 +216,31 @@ pub async fn update_post(
         return Err((StatusCode::NOT_FOUND, "Post not found".to_string()));
     }
 
+    if final_id != id {
+        sqlx::query("UPDATE comments SET post_id = ? WHERE post_id = ?")
+            .bind(&final_id)
+            .bind(&id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+        sqlx::query("UPDATE post_upvotes SET post_id = ? WHERE post_id = ?")
+            .bind(&final_id)
+            .bind(&id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    }
+
     sqlx::query("DELETE FROM post_translations WHERE post_id = ?")
-        .bind(&id)
+        .bind(&final_id)
         .execute(&mut *tx)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     for trans in &payload.translations {
         sqlx::query("INSERT INTO post_translations (post_id, language, title, summary, content, read_time, is_machine_translated) VALUES (?, ?, ?, ?, ?, ?, ?)")
-            .bind(&id)
+            .bind(&final_id)
             .bind(&trans.language)
             .bind(&trans.title)
             .bind(&trans.summary)
@@ -228,7 +254,7 @@ pub async fn update_post(
 
     tx.commit().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    get_post_internal(&pool, id).await
+    get_post_internal(&pool, final_id).await
 }
 
 pub async fn delete_post(
@@ -569,4 +595,49 @@ pub async fn delete_feedback(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
 
     Ok(StatusCode::OK)
+}
+
+pub async fn get_categories(
+    State(pool): State<SqlitePool>,
+) -> Result<Json<Vec<crate::models::Category>>, (StatusCode, String)> {
+    let categories = sqlx::query_as::<_, crate::models::Category>(
+        "SELECT id, name, meta_domain, icon, description FROM categories ORDER BY name ASC"
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+
+    Ok(Json(categories))
+}
+
+pub async fn create_category(
+    headers: axum::http::HeaderMap,
+    State(pool): State<SqlitePool>,
+    Json(payload): Json<crate::models::CreateCategoryRequest>,
+) -> Result<Json<crate::models::Category>, (StatusCode, String)> {
+    check_auth(&headers)?;
+
+    let id = payload.name.to_lowercase().replace(' ', "-").replace(|c: char| !c.is_alphanumeric() && c != '-', "");
+
+    sqlx::query(
+        "INSERT INTO categories (id, name, meta_domain, icon, description) VALUES (?, ?, ?, ?, ?)"
+    )
+    .bind(&id)
+    .bind(&payload.name)
+    .bind(&payload.meta_domain)
+    .bind(&payload.icon)
+    .bind(&payload.description)
+    .execute(&pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to insert category: {}", e)))?;
+
+    let category = crate::models::Category {
+        id,
+        name: payload.name,
+        meta_domain: payload.meta_domain,
+        icon: payload.icon,
+        description: payload.description,
+    };
+
+    Ok(Json(category))
 }

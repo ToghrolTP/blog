@@ -40,13 +40,13 @@ export function Header() {
         
         <nav className="flex flex-row flex-wrap justify-center items-center gap-x-4 gap-y-2 md:gap-6 w-full md:w-auto">
           <div className="flex text-lg md:text-xl gap-3 md:gap-6">
-            <a href="#" className="p-1 hover:scale-110 transition-transform rounded" aria-label="GitHub" title="GitHub">
+            <a href="https://github.com/toghroltp" className="p-1 hover:scale-110 transition-transform rounded" aria-label="GitHub" title="GitHub">
               <GithubLogoIcon />
             </a>
-            <a href="#" className="p-1 hover:scale-110 transition-transform rounded" aria-label="Twitter" title="Twitter">
+            <a href="https://x.com/ToghrolDecson" className="p-1 hover:scale-110 transition-transform rounded" aria-label="Twitter" title="Twitter">
               <TwitterLogoIcon />
             </a>
-            <a href="#" className="p-1 hover:scale-110 transition-transform rounded" aria-label="Email" title="Email">
+            <a href="mailto:toghroltheprogrammer@gmail.com" className="p-1 hover:scale-110 transition-transform rounded" aria-label="Email" title="Email">
               <EnvelopeSimpleIcon />
             </a>
           </div>

@@ -23,7 +23,6 @@ cd "$SCRIPT_DIR"
 
 TIMESTAMP="$(date +%Y-%m-%d_%H%M%S)"
 ZIP_NAME="blog-deploy-${TIMESTAMP}.zip"
-DOCKERIGNORE=".dockerignore"
 SIZE_WARN_MB=50
 
 # Colors for output
@@ -60,57 +59,7 @@ if ! command -v zip &>/dev/null; then
     exit 1
 fi
 
-if [[ ! -f "$DOCKERIGNORE" ]]; then
-    warn "No .dockerignore found — all files will be included in the zip."
-fi
-
-# ---------------------------------------------------------------------------
-# Build exclusion list from .dockerignore
-# ---------------------------------------------------------------------------
-# zip's -x flag uses glob patterns. We translate .dockerignore entries:
-#   - Strip comments and blank lines
-#   - Trailing / means directory → append *
-#   - Leading / is relative to root → strip it
-#   - Also always exclude: the zip outputs, this script, and .git/
-# ---------------------------------------------------------------------------
-EXCLUDE_ARGS=()
-
-# Always exclude regardless of .dockerignore
-EXCLUDE_ARGS+=("-x" "*.zip")
-EXCLUDE_ARGS+=("-x" "package.sh")
-EXCLUDE_ARGS+=("-x" ".git/*")
-EXCLUDE_ARGS+=("-x" ".git/**/*")
-
-if [[ -f "$DOCKERIGNORE" ]]; then
-    while IFS= read -r line; do
-        # Skip empty lines and comments
-        [[ -z "$line" ]] && continue
-        [[ "$line" =~ ^[[:space:]]*# ]] && continue
-
-        # Trim whitespace
-        line="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
-        [[ -z "$line" ]] && continue
-
-        # Strip leading /
-        line="${line#/}"
-
-        # If pattern ends with /, it's a directory — match everything inside
-        if [[ "$line" == */ ]]; then
-            EXCLUDE_ARGS+=("-x" "${line}*")
-            EXCLUDE_ARGS+=("-x" "${line}**/*")
-        else
-            # Could be a file or a directory without trailing slash
-            # Add both the pattern itself and a recursive glob
-            EXCLUDE_ARGS+=("-x" "$line")
-            # If it looks like a directory pattern (no extension, no glob),
-            # also add recursive match
-            if [[ "$line" != *.* ]] && [[ "$line" != *\** ]]; then
-                EXCLUDE_ARGS+=("-x" "${line}/*")
-                EXCLUDE_ARGS+=("-x" "${line}/**/*")
-            fi
-        fi
-    done < "$DOCKERIGNORE"
-fi
+# ponytail: zip command below only includes specific production files, making exclusions unnecessary
 
 # ---------------------------------------------------------------------------
 # Copy production assets to prod_build/

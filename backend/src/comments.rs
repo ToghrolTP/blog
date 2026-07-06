@@ -47,19 +47,6 @@ pub async fn get_comments(
     Ok(Json(response))
 }
 
-async fn is_under_maintenance(pool: &SqlitePool, key: &str) -> bool {
-    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = ?")
-        .bind(key)
-        .fetch_optional(pool)
-        .await
-        .unwrap_or(None);
-    if let Some(r) = row {
-        r.0 == "true"
-    } else {
-        false
-    }
-}
-
 pub async fn create_comment(
     headers: axum::http::HeaderMap,
     State(pool): State<SqlitePool>,
@@ -67,7 +54,7 @@ pub async fn create_comment(
     jar: CookieJar,
     Json(payload): Json<CreateCommentRequest>,
 ) -> Result<Json<CommentResponse>, (StatusCode, String)> {
-    if is_under_maintenance(&pool, "site_maintenance").await || is_under_maintenance(&pool, "comments_maintenance").await {
+    if crate::handlers::is_under_maintenance(&pool, "site_maintenance").await || crate::handlers::is_under_maintenance(&pool, "comments_maintenance").await {
         if crate::handlers::check_auth(&headers).is_err() {
             return Err((StatusCode::SERVICE_UNAVAILABLE, "Comments are under maintenance".to_string()));
         }

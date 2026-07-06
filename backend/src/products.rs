@@ -16,36 +16,14 @@ pub struct ProductFilter {
     pub tag: Option<String>,
 }
 
-async fn is_store_under_maintenance(pool: &SqlitePool) -> bool {
-    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = 'store_maintenance'")
-        .fetch_optional(pool)
-        .await
-        .unwrap_or(None);
-    if let Some(r) = row {
-        r.0 == "true"
-    } else {
-        false
-    }
-}
 
-async fn is_site_under_maintenance(pool: &SqlitePool) -> bool {
-    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = 'site_maintenance'")
-        .fetch_optional(pool)
-        .await
-        .unwrap_or(None);
-    if let Some(r) = row {
-        r.0 == "true"
-    } else {
-        false
-    }
-}
 
 pub async fn get_products(
     headers: axum::http::HeaderMap,
     State(pool): State<SqlitePool>,
     Query(params): Query<Vec<(String, String)>>,
 ) -> Result<Json<Vec<ProductResponse>>, (StatusCode, String)> {
-    if is_store_under_maintenance(&pool).await || is_site_under_maintenance(&pool).await {
+    if crate::handlers::is_under_maintenance(&pool, "store_maintenance").await || crate::handlers::is_under_maintenance(&pool, "site_maintenance").await {
         if crate::handlers::check_auth(&headers).is_err() {
             return Err((StatusCode::SERVICE_UNAVAILABLE, "Store is under maintenance".to_string()));
         }
@@ -113,7 +91,7 @@ pub async fn get_product(
     State(pool): State<SqlitePool>,
     Path(id): Path<String>,
 ) -> Result<Json<ProductResponse>, (StatusCode, String)> {
-    if is_store_under_maintenance(&pool).await || is_site_under_maintenance(&pool).await {
+    if crate::handlers::is_under_maintenance(&pool, "store_maintenance").await || crate::handlers::is_under_maintenance(&pool, "site_maintenance").await {
         if crate::handlers::check_auth(&headers).is_err() {
             return Err((StatusCode::SERVICE_UNAVAILABLE, "Store is under maintenance".to_string()));
         }

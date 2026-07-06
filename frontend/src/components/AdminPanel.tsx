@@ -1,37 +1,43 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Post, Comment, Product } from '../types';
+import { Post, Comment, Product, Category } from '../types';
 import { 
   BugIcon,
-  PencilIcon, 
-  TrashIcon, 
   PlusIcon, 
   LogOutIcon, 
   CheckSquareIcon, 
-  SquareIcon, 
   XIcon, 
   LayoutDashboardIcon, 
   MessageSquareIcon, 
   TagIcon, 
   ArrowLeftIcon, 
   FileTextIcon,
-  SettingsIcon
+  SettingsIcon,
+  TrashIcon,
+  FolderIcon
 } from './Icons';
-import { MarkdownRenderer } from './MarkdownRenderer';
-import { Input } from './ui/Input';
-import { Textarea } from './ui/Textarea';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
+import { Input } from './ui/Input';
+
+// Import sub-panels
+import { AdminPosts } from './admin/AdminPosts';
+import { AdminProducts } from './admin/AdminProducts';
+import { AdminComments } from './admin/AdminComments';
+import { AdminFeedbacks } from './admin/AdminFeedbacks';
+import { AdminSettings } from './admin/AdminSettings';
+import { AdminCategories } from './admin/AdminCategories';
 
 export function AdminPanel() {
   const navigate = useNavigate();
   const [secret, setSecret] = useState(localStorage.getItem('adminSecret') || '');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'products' | 'feedback' | 'settings'>('posts');
+  const [activeTab, setActiveTab] = useState<'posts' | 'comments' | 'products' | 'feedback' | 'settings' | 'categories'>('posts');
   const [posts, setPosts] = useState<Post[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [settings, setSettings] = useState<{
     site_maintenance?: boolean;
     blog_maintenance?: boolean;
@@ -44,12 +50,20 @@ export function AdminPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Post/Product edit states shared with sub-panels to control list vs editor rendering
   const [editingPost, setEditingPost] = useState<Partial<Post> | null>(null);
+  const [originalPostId, setOriginalPostId] = useState<string | null>(null);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [editingFormTab, setEditingFormTab] = useState<'metadata' | 'en' | 'fa'>('metadata');
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isCreatingMode, setIsCreatingMode] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const allExistingTags = Array.from(
+    new Set(
+      posts.flatMap(p => Array.isArray(p.tags) ? p.tags : [])
+    )
+  ).sort();
 
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState<(string | number)[]>([]);
@@ -59,7 +73,9 @@ export function AdminPanel() {
   const fetchPosts = async (currentSecret: string) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/posts');
+      const res = await fetch('/api/posts', {
+        headers: { 'Authorization': `Bearer ${currentSecret}` }
+      });
       if (res.ok) {
         setPosts(await res.json());
       } else {
@@ -88,10 +104,12 @@ export function AdminPanel() {
     setLoading(false);
   };
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (currentSecret: string) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/products');
+      const res = await fetch('/api/products', {
+        headers: { 'Authorization': `Bearer ${currentSecret}` }
+      });
       if (res.ok) {
         setProducts(await res.json());
       } else {
@@ -103,10 +121,12 @@ export function AdminPanel() {
     setLoading(false);
   };
 
-  const fetchSettings = async () => {
+  const fetchSettings = async (currentSecret: string) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch('/api/settings', {
+        headers: { 'Authorization': `Bearer ${currentSecret}` }
+      });
       if (res.ok) {
         setSettings(await res.json());
       } else {
@@ -136,157 +156,74 @@ export function AdminPanel() {
     }
   };
 
-  const handleDeleteFeedback = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this feedback?')) return;
+  const fetchCategories = async (currentSecret: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/feedbacks/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${secret}` }
+      const res = await fetch('/api/categories', {
+        headers: { 'Authorization': `Bearer ${currentSecret}` }
       });
       if (res.ok) {
-        setFeedbacks(prev => prev.filter(f => f.id !== id));
-        setSuccessMessage('Feedback deleted successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
+        setCategories(await res.json());
       } else {
-        alert('Failed to delete feedback (Unauthorized?)');
+        setError('Failed to fetch categories');
       }
     } catch (err) {
-      alert('Error deleting feedback');
-    } finally {
-      setLoading(false);
+      setError('Network error');
+    }
+    setLoading(false);
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret })
+      });
+      if (res.ok) {
+        localStorage.setItem('adminSecret', secret);
+        setIsAuthenticated(true);
+      } else {
+        setError('Invalid secret key');
+      }
+    } catch (err) {
+      setError('Connection error');
     }
   };
 
-  const handleToggleSetting = async (
-    key: 'site_maintenance' | 'blog_maintenance' | 'comments_maintenance' | 'store_maintenance' | 'feedback_enabled',
-    checked: boolean
-  ) => {
-    setSavingSettings(true);
-    try {
-      const res = await fetch('/api/settings', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${secret}`
-        },
-        body: JSON.stringify({
-          key,
-          value: checked ? 'true' : 'false'
-        })
-      });
-      if (res.ok) {
-        setSettings(prev => ({ ...prev, [key]: checked }));
-        setSuccessMessage('Settings saved successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
-      } else {
-        setError('Failed to save settings');
-      }
-    } catch (err) {
-      setError('Network error saving settings');
-    } finally {
-      setSavingSettings(false);
+  useEffect(() => {
+    if (secret) {
+      fetch('/api/auth/admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret })
+      }).then(res => {
+        if (res.ok) {
+          setIsAuthenticated(true);
+        } else {
+          localStorage.removeItem('adminSecret');
+        }
+      }).catch(() => {});
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
       if (activeTab === 'posts') fetchPosts(secret);
       else if (activeTab === 'comments') fetchComments(secret);
-      else if (activeTab === 'products') fetchProducts();
+      else if (activeTab === 'products') fetchProducts(secret);
       else if (activeTab === 'feedback') fetchFeedbacks(secret);
-      else if (activeTab === 'settings') fetchSettings();
+      else if (activeTab === 'settings') fetchSettings(secret);
+      else if (activeTab === 'categories') fetchCategories(secret);
     }
   }, [isAuthenticated, activeTab]);
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/admin/comments', {
-        headers: { 'Authorization': `Bearer ${secret}` }
-      });
-      if (res.ok) {
-        localStorage.setItem('adminSecret', secret);
-        setIsAuthenticated(true);
-        setError(null);
-      } else {
-        setError('Invalid Secret Key');
-      }
-    } catch (err) {
-      setError('Network error verifying secret');
-    }
-  };
 
   const handleLogout = () => {
     localStorage.removeItem('adminSecret');
     setSecret('');
     setIsAuthenticated(false);
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this post?')) return;
-    
-    try {
-      const res = await fetch(`/api/posts/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${secret}`
-        }
-      });
-      if (res.ok) {
-        setPosts(posts.filter(p => p.id !== id));
-        setSuccessMessage('Deleted successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
-      } else {
-        alert('Failed to delete (Unauthorized?)');
-      }
-    } catch (err) {
-      alert('Error deleting post');
-    }
-  };
-
-  const handleDeleteComment = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this comment?')) return;
-    
-    try {
-      const res = await fetch(`/api/comments/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${secret}`
-        }
-      });
-      if (res.ok) {
-        setComments(comments.filter(c => c.id !== id));
-        setSuccessMessage('Deleted successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
-      } else {
-        alert('Failed to delete comment (Unauthorized?)');
-      }
-    } catch (err) {
-      alert('Error deleting comment');
-    }
-  };
-
-  const handleDeleteProduct = async (id: string | number) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
-    
-    try {
-      const res = await fetch(`/api/products/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${secret}`
-        }
-      });
-      if (res.ok) {
-        setProducts(products.filter(p => p.id !== id));
-        setSuccessMessage('Deleted successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
-      } else {
-        alert('Failed to delete product (Unauthorized?)');
-      }
-    } catch (err) {
-      alert('Error deleting product');
-    }
   };
 
   const handleBulkDelete = async () => {
@@ -333,128 +270,6 @@ export function AdminPanel() {
     setIsSelectionMode(false);
   }, [activeTab]);
 
-  const handleSaveProduct = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingProduct) return;
-
-    const trans_en = editingProduct.translations?.find((t: any) => t.language === 'en');
-    const trans_fa = editingProduct.translations?.find((t: any) => t.language === 'fa');
-    const defaultTitle = trans_en?.title || trans_fa?.title || `prod-${Date.now()}`;
-
-    const finalId = editingProduct.id || defaultTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    
-    if (isCreatingMode && products.find(p => p.id === finalId)) {
-      alert("ID/Slug already exists");
-      return;
-    }
-
-    const method = isCreatingMode ? 'POST' : 'PUT';
-    const url = method === 'POST' ? '/api/products' : `/api/products/${finalId}`;
-
-    const payload = {
-      id: finalId,
-      type: editingProduct.type || 'latex',
-      metadata: editingProduct.type === 'book' ? {
-        ...editingProduct.metadata,
-        pageCount: parseInt(editingProduct.metadata?.pageCount as any) || 0
-      } : undefined,
-      tags: Array.isArray(editingProduct.tags) ? editingProduct.tags : (editingProduct.tags as string || '').split(',').map(s => s.trim()).filter(Boolean),
-      thumbnailUrl: editingProduct.thumbnailUrl || null,
-      photos: Array.isArray(editingProduct.photos) ? editingProduct.photos : [],
-      translations: (editingProduct.translations || [])
-        .filter((t: any) => t.title) 
-        .map((t: any) => ({
-          ...t,
-          price: Number(t.price) || 0,
-          features: Array.isArray(t.features) ? t.features.filter((f: string) => f.trim().length > 0) : []
-        }))
-    };
-
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${secret}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        const savedProduct = await res.json();
-        if (method === 'POST') {
-          setProducts([savedProduct, ...products]);
-        } else {
-          setProducts(products.map(p => p.id === savedProduct.id ? savedProduct : p));
-        }
-        setSuccessMessage('Saved successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
-        setEditingProduct(null);
-      } else {
-        const errText = await res.text();
-        alert(`Failed to save: ${res.status} ${errText}`);
-      }
-    } catch (err: any) {
-      alert(`Error saving product: ${err.message}`);
-    }
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingPost) return;
-
-    const trans_en = editingPost.translations?.find((t: any) => t.language === 'en');
-    const trans_fa = editingPost.translations?.find((t: any) => t.language === 'fa');
-    const defaultTitle = trans_en?.title || trans_fa?.title || 'new-post';
-
-    const finalId = editingPost.id || defaultTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-
-    if (isCreatingMode && posts.find(p => p.id === finalId)) {
-      alert("ID/Slug already exists");
-      return;
-    }
-
-    const method = isCreatingMode ? 'POST' : 'PUT';
-    const url = isCreatingMode ? '/api/posts' : `/api/posts/${editingPost.id || finalId}`;
-
-    const payload = {
-      id: finalId,
-      date: editingPost.date || new Date().toISOString().split('T')[0],
-      tags: typeof editingPost.tags === 'string' ? (editingPost.tags as string).split(',').map(s => s.trim()) : (editingPost.tags || []),
-      thumbnailUrl: editingPost.thumbnailUrl || null,
-      translations: (editingPost.translations || []).filter((t: any) => t.title && t.content), 
-      type: editingPost.type || 'linux'
-    };
-
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${secret}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (res.ok) {
-        const savedPost = await res.json();
-        if (isCreatingMode) {
-          setPosts([savedPost, ...posts]);
-        } else {
-          setPosts(posts.map(p => p.id === savedPost.id ? savedPost : p));
-        }
-        setSuccessMessage('Saved successfully');
-        setTimeout(() => setSuccessMessage(null), 3000);
-        setEditingPost(null);
-      } else {
-        const errText = await res.text();
-        alert(`Failed to save: ${res.status} ${errText}`);
-      }
-    } catch (err: any) {
-      alert(`Error saving post: ${err.message}`);
-    }
-  };
-
   if (!isAuthenticated) {
     return (
       <div className="animate-in fade-in duration-500 max-w-md mx-auto mt-20">
@@ -476,596 +291,6 @@ export function AdminPanel() {
             <Button type="button" variant="ghost" onClick={() => navigate('/')} className="w-full">
               Cancel
             </Button>
-          </form>
-        </Card>
-      </div>
-    );
-  }
-
-  // ----------------------------------------------------
-  // PRODUCT EDIT / CREATE FORM VIEW
-  // ----------------------------------------------------
-  if (editingProduct) {
-    return (
-      <div className="animate-in fade-in duration-500">
-        <div className="flex justify-between items-center mb-6 border-b border-gb-bg-soft/50 pb-4">
-          <h2 className="text-2xl font-mono text-gb-orange-light flex items-center gap-2">
-            <ArrowLeftIcon 
-              className="cursor-pointer hover:text-gb-fg transition-colors" 
-              size={24} 
-              onClick={() => setEditingProduct(null)} 
-            />
-            {products.find(p => p.id === editingProduct.id) ? 'Edit Product' : 'New Product'}
-          </h2>
-          <Button variant="ghost" size="sm" onClick={() => setEditingProduct(null)}>Cancel</Button>
-        </div>
-
-        <Card className="!p-0">
-          <form onSubmit={handleSaveProduct} className="font-mono" autoComplete="off">
-            {/* Form navigation tabs */}
-            <div className="flex bg-gb-bg-soft/20 border-b border-gb-bg-soft">
-              {(['metadata', 'en', 'fa'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setEditingFormTab(tab)}
-                  className={`px-6 py-4 font-mono text-sm font-bold border-b-2 transition-all cursor-pointer ${
-                    editingFormTab === tab
-                      ? 'text-gb-orange-light border-gb-orange-light bg-gb-bg-soft/10 font-extrabold'
-                      : 'text-gb-fg-dark border-transparent hover:text-gb-fg'
-                  }`}
-                >
-                  {tab === 'metadata' && 'General Info'}
-                  {tab === 'en' && 'English Translation'}
-                  {tab === 'fa' && 'Persian Translation'}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* TAB 1: METADATA */}
-              {editingFormTab === 'metadata' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm mb-2 text-gb-fg-dark">ID (Slug - optional)</label>
-                      <Input 
-                        type="text" 
-                        value={editingProduct.id || ''}
-                        onChange={e => setEditingProduct({...editingProduct, id: e.target.value})}
-                        disabled={!isCreatingMode}
-                        placeholder="e.g. academic-template"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm mb-2 text-gb-fg-dark">Product Type</label>
-                      <select
-                        value={editingProduct.type || 'latex'}
-                        onChange={e => setEditingProduct({...editingProduct, type: e.target.value})}
-                        className="w-full bg-gb-bg-soft border-2 border-gb-fg-dark/20 rounded-none px-3 py-2 text-gb-fg font-mono text-sm focus:outline-none focus:border-gb-orange-light focus:ring-1 focus:ring-gb-orange-light transition-all"
-                      >
-                        <option value="latex">LaTeX Template</option>
-                        <option value="book">Book</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {editingProduct.type === 'book' && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border border-gb-fg-dark/30 p-4 rounded bg-gb-bg-soft/30 animate-in fade-in duration-300">
-                      <div>
-                        <label className="block text-sm mb-1 text-gb-fg-dark">Author</label>
-                        <Input
-                          type="text"
-                          value={editingProduct.metadata?.author || ''}
-                          onChange={e => setEditingProduct({
-                            ...editingProduct, 
-                            metadata: { ...editingProduct.metadata, author: e.target.value }
-                          })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-1 text-gb-fg-dark">Page Count</label>
-                        <Input
-                          type="number"
-                          value={editingProduct.metadata?.pageCount ?? ''}
-                          onChange={e => setEditingProduct({
-                            ...editingProduct, 
-                            metadata: { ...editingProduct.metadata, pageCount: e.target.value as any }
-                          })}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-1 text-gb-fg-dark">Format</label>
-                        <Input
-                          type="text"
-                          placeholder="e.g. PDF, EPUB"
-                          value={editingProduct.metadata?.format || ''}
-                          onChange={e => setEditingProduct({
-                            ...editingProduct, 
-                            metadata: { ...editingProduct.metadata, format: e.target.value }
-                          })}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm mb-2 text-gb-fg-dark">Tags (comma separated)</label>
-                    <Input 
-                      type="text" 
-                      value={Array.isArray(editingProduct.tags) ? editingProduct.tags.join(', ') : (editingProduct.tags || '')}
-                      onChange={e => setEditingProduct({...editingProduct, tags: e.target.value as any})}
-                      placeholder="latex, clean, academic"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm mb-2 text-gb-fg-dark">Thumbnail Image</label>
-                      <div className="flex gap-2">
-                        <Input 
-                          type="text" 
-                          placeholder="/uploads/..."
-                          value={editingProduct.thumbnailUrl || ''}
-                          onChange={e => setEditingProduct({...editingProduct, thumbnailUrl: e.target.value})}
-                        />
-                        <label className="cursor-pointer bg-gb-bg-soft hover:bg-gb-purple-light/20 text-gb-purple-light px-3 py-2.5 rounded flex items-center justify-center transition-colors border border-gb-purple-light/30 shrink-0">
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const formData = new FormData();
-                              formData.append('image', file);
-                              try {
-                                const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                                if (res.ok) {
-                                  const data = await res.json();
-                                  setEditingProduct({...editingProduct, thumbnailUrl: data.url});
-                                }
-                              } catch(err) { console.error('Upload failed', err); }
-                            }} 
-                          />
-                          <PlusIcon size={18} />
-                        </label>
-                      </div>
-                      {editingProduct.thumbnailUrl && (
-                        <img src={editingProduct.thumbnailUrl} alt="Thumbnail preview" className="mt-3 h-24 object-contain bg-gb-bg-dark rounded border border-gb-bg-soft" />
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm mb-2 text-gb-fg-dark">Gallery Photos</label>
-                      <div className="flex gap-2 mb-2">
-                        <label className="cursor-pointer bg-gb-bg-soft hover:bg-gb-green-light/20 text-gb-green-light px-3 py-2 rounded flex items-center justify-center transition-colors border border-gb-green-light/30 w-full">
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            multiple
-                            className="hidden" 
-                            onChange={async (e) => {
-                              const files = Array.from(e.target.files || []);
-                              if (files.length === 0) return;
-                              
-                              const uploadedUrls: string[] = [];
-                              for (const file of files) {
-                                const formData = new FormData();
-                                formData.append('image', file);
-                                try {
-                                  const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                                  if (res.ok) {
-                                    const data = await res.json();
-                                    uploadedUrls.push(data.url);
-                                  }
-                                } catch(err) { console.error('Upload failed', err); }
-                              }
-                              
-                              setEditingProduct(prev => prev ? {
-                                ...prev,
-                                photos: [...(prev.photos || []), ...uploadedUrls]
-                              } : prev);
-                              
-                              e.target.value = '';
-                            }} 
-                          />
-                          <PlusIcon size={16} className="mr-2" /> Upload Photos
-                        </label>
-                      </div>
-                      
-                      {(editingProduct.photos?.length || 0) > 0 && (
-                        <div className="grid grid-cols-3 gap-2 mt-3 max-h-32 overflow-y-auto">
-                          {editingProduct.photos?.map((photo, idx) => (
-                            <div key={idx} className="relative group/photo">
-                              <img src={photo} alt={`Gallery ${idx}`} className="h-14 w-full object-cover bg-gb-bg-dark rounded border border-gb-bg-soft" />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newPhotos = editingProduct.photos?.filter((_, i) => i !== idx);
-                                  setEditingProduct({...editingProduct, photos: newPhotos});
-                                }}
-                                className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/photo:opacity-100 transition-opacity"
-                              >
-                                <TrashIcon size={14} className="text-gb-red-light" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2 & TAB 3: TRANSLATIONS (EN & FA) */}
-              {(editingFormTab === 'en' || editingFormTab === 'fa') && (
-                <div className="animate-in fade-in duration-300">
-                  {(() => {
-                    const lang = editingFormTab;
-                    const currentTranslation = editingProduct.translations?.find((t: any) => t.language === lang) 
-                      || { language: lang, title: '', description: '', features: [], price: 0 };
-                    
-                    const updateTranslation = (key: string, value: any) => {
-                      const otherTranslations = editingProduct.translations?.filter((t: any) => t.language !== lang) || [];
-                      setEditingProduct({
-                        ...editingProduct,
-                        translations: [...otherTranslations, { ...currentTranslation, [key]: value }]
-                      });
-                    };
-
-                    return (
-                      <div className="space-y-5" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
-                        <div>
-                          <label className="block text-sm mb-2 text-gb-fg-dark">Title ({lang.toUpperCase()})</label>
-                          <Input 
-                            type="text" 
-                            required={lang === 'en'} 
-                            value={currentTranslation.title || ''}
-                            onChange={e => updateTranslation('title', e.target.value)}
-                            placeholder={lang === 'fa' ? 'عنوان محصول' : 'Product Title'}
-                            dir={lang === 'fa' ? 'rtl' : 'ltr'}
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm mb-2 text-gb-fg-dark">Price ({lang.toUpperCase()})</label>
-                          <Input 
-                            type="number" 
-                            required={lang === 'en'}
-                            step="0.01"
-                            value={currentTranslation.price || 0}
-                            onChange={e => updateTranslation('price', parseFloat(e.target.value) || 0)}
-                            placeholder="0.00"
-                            dir={lang === 'fa' ? 'rtl' : 'ltr'}
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm mb-2 text-gb-fg-dark">Description ({lang.toUpperCase()})</label>
-                          <Textarea 
-                            rows={4}
-                            value={currentTranslation.description || ''}
-                            onChange={e => updateTranslation('description', e.target.value)}
-                            placeholder={lang === 'fa' ? 'توضیحات محصول...' : 'Product Description...'}
-                            dir={lang === 'fa' ? 'rtl' : 'ltr'}
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm mb-2 text-gb-fg-dark">Features ({lang.toUpperCase()}) (one per line)</label>
-                          <Textarea 
-                            rows={5}
-                            value={Array.isArray(currentTranslation.features) ? currentTranslation.features.join('\n') : currentTranslation.features}
-                            onChange={e => updateTranslation('features', e.target.value.split('\n'))}
-                            placeholder={lang === 'fa' ? 'ویژگی اول\nویژگی دوم' : 'Feature One\nFeature Two'}
-                            dir={lang === 'fa' ? 'rtl' : 'ltr'}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end p-6 bg-gb-bg-soft/10 border-t border-gb-bg-soft">
-              <Button type="submit" className="bg-gb-yellow-light text-gb-bg hover:bg-gb-yellow border-transparent font-bold">
-                Save Product
-              </Button>
-            </div>
-          </form>
-        </Card>
-      </div>
-    );
-  }
-
-  // ----------------------------------------------------
-  // POST EDIT / CREATE FORM VIEW
-  // ----------------------------------------------------
-  if (editingPost) {
-    return (
-      <div className="animate-in fade-in duration-500">
-        <div className="flex justify-between items-center mb-6 border-b border-gb-bg-soft/50 pb-4">
-          <h2 className="text-2xl font-mono text-gb-orange-light flex items-center gap-2">
-            <ArrowLeftIcon 
-              className="cursor-pointer hover:text-gb-fg transition-colors" 
-              size={24} 
-              onClick={() => { setEditingPost(null); setIsPreviewMode(false); }} 
-            />
-            {posts.find(p => p.id === editingPost.id) ? 'Edit Post' : 'New Post'}
-          </h2>
-          <Button variant="ghost" size="sm" onClick={() => { setEditingPost(null); setIsPreviewMode(false); }}>Cancel</Button>
-        </div>
-
-        <Card className="!p-0">
-          <form onSubmit={handleSave} className="font-mono" autoComplete="off">
-            {/* Form navigation tabs */}
-            <div className="flex bg-gb-bg-soft/20 border-b border-gb-bg-soft">
-              {(['metadata', 'en', 'fa'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setEditingFormTab(tab)}
-                  className={`px-6 py-4 font-mono text-sm font-bold border-b-2 transition-all cursor-pointer ${
-                    editingFormTab === tab
-                      ? 'text-gb-orange-light border-gb-orange-light bg-gb-bg-soft/10 font-extrabold'
-                      : 'text-gb-fg-dark border-transparent hover:text-gb-fg'
-                  }`}
-                >
-                  {tab === 'metadata' && 'General Metadata'}
-                  {tab === 'en' && 'English Translation'}
-                  {tab === 'fa' && 'Persian Translation'}
-                </button>
-              ))}
-            </div>
-
-            <div className="p-6 space-y-6">
-              {/* TAB 1: METADATA */}
-              {editingFormTab === 'metadata' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm mb-2 text-gb-fg-dark">ID (Slug)</label>
-                      <Input 
-                        type="text" 
-                        name="post-slug"
-                        autoComplete="off"
-                        value={editingPost.id || ''}
-                        onChange={e => setEditingPost({...editingPost, id: e.target.value})}
-                        disabled={!isCreatingMode}
-                        placeholder="e.g. linux-tips"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm mb-2 text-gb-fg-dark">Date (YYYY-MM-DD)</label>
-                      <Input 
-                        type="text" 
-                        required
-                        value={editingPost.date || ''}
-                        onChange={e => setEditingPost({...editingPost, date: e.target.value})}
-                        placeholder={new Date().toISOString().split('T')[0]}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm mb-2 text-gb-fg-dark">Category</label>
-                      <select
-                        value={editingPost.type || 'linux'}
-                        onChange={e => setEditingPost({...editingPost, type: e.target.value})}
-                        className="w-full bg-gb-bg-soft border-2 border-gb-fg-dark/20 rounded-none px-3 py-2 text-gb-fg font-mono text-sm focus:outline-none focus:border-gb-orange-light focus:ring-1 focus:ring-gb-orange-light transition-all"
-                      >
-                        <option value="linux">Linux</option>
-                        <option value="cybersecurity">Cybersecurity</option>
-                        <option value="backend">Backend Engineering</option>
-                        <option value="devops">DevOps & Cloud</option>
-                        <option value="terminal">CLI & Terminal</option>
-                        <option value="academic">Academic & Writing</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm mb-2 text-gb-fg-dark">Tags (comma separated)</label>
-                      <Input 
-                        type="text" 
-                        value={Array.isArray(editingPost.tags) ? editingPost.tags.join(', ') : (editingPost.tags || '')}
-                        onChange={e => setEditingPost({...editingPost, tags: e.target.value as any})}
-                        placeholder="bash, kernel, systemd"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm mb-2 text-gb-fg-dark">Thumbnail URL</label>
-                    <div className="flex gap-2">
-                      <Input 
-                        type="text" 
-                        placeholder="/uploads/..."
-                        value={editingPost.thumbnailUrl || ''}
-                        onChange={e => setEditingPost({...editingPost, thumbnailUrl: e.target.value})}
-                      />
-                      <label className="cursor-pointer bg-gb-bg-soft hover:bg-gb-purple-light/20 text-gb-purple-light px-3 py-2.5 rounded flex items-center justify-center transition-colors border border-gb-purple-light/30 shrink-0">
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          className="hidden" 
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            const formData = new FormData();
-                            formData.append('image', file);
-                            try {
-                              const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                              if (res.ok) {
-                                const data = await res.json();
-                                setEditingPost({...editingPost, thumbnailUrl: data.url});
-                              }
-                            } catch(err) { console.error('Upload failed', err); }
-                          }} 
-                        />
-                        <PlusIcon size={18} />
-                      </label>
-                    </div>
-                    {editingPost.thumbnailUrl && (
-                      <img src={editingPost.thumbnailUrl} alt="Thumbnail preview" className="mt-3 h-24 object-contain bg-gb-bg-dark rounded border border-gb-bg-soft" />
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2 & TAB 3: TRANSLATIONS (EN & FA) */}
-              {(editingFormTab === 'en' || editingFormTab === 'fa') && (
-                <div className="animate-in fade-in duration-300">
-                  {(() => {
-                    const lang = editingFormTab;
-                    const currentTranslation = editingPost.translations?.find((t: any) => t.language === lang) 
-                      || { language: lang, title: '', summary: '', content: '', readTime: 5 };
-                    
-                    const updateTranslation = (key: string, value: any) => {
-                      const otherTranslations = editingPost.translations?.filter((t: any) => t.language !== lang) || [];
-                      setEditingPost({
-                        ...editingPost,
-                        translations: [...otherTranslations, { ...currentTranslation, [key]: value }]
-                      });
-                    };
-
-                    const updateContentAndReadTime = (text: string) => {
-                      const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
-                      const wpm = lang === 'fa' ? 180 : 200;
-                      const calculatedReadTime = Math.max(1, Math.ceil(words / wpm));
-                      
-                      const otherTranslations = editingPost.translations?.filter((t: any) => t.language !== lang) || [];
-                      setEditingPost({
-                        ...editingPost,
-                        translations: [...otherTranslations, { ...currentTranslation, content: text, readTime: calculatedReadTime }]
-                      });
-                    };
-
-                    return (
-                      <div className="space-y-5" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                          <div className="md:col-span-2">
-                            <label className="block text-sm mb-2 text-gb-fg-dark">Title ({lang.toUpperCase()})</label>
-                            <Input 
-                              type="text" 
-                              value={currentTranslation.title}
-                              onChange={e => updateTranslation('title', e.target.value)}
-                              placeholder={lang === 'fa' ? 'عنوان پست' : 'Post Title'}
-                              dir={lang === 'fa' ? 'rtl' : 'ltr'}
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm mb-2 text-gb-fg-dark">Read Time (minutes)</label>
-                            <Input 
-                              type="number" 
-                              value={currentTranslation.readTime}
-                              onChange={e => updateTranslation('readTime', parseInt(e.target.value) || 5)}
-                              dir={lang === 'fa' ? 'rtl' : 'ltr'}
-                            />
-                          </div>
-                        </div>
-
-                        {lang === 'fa' && (
-                          <div className="flex items-center gap-3">
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={currentTranslation.isMachineTranslated || false}
-                              onClick={() => updateTranslation('isMachineTranslated', !currentTranslation.isMachineTranslated)}
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gb-purple-light focus:ring-offset-2 focus:ring-offset-gb-bg-dark cursor-pointer ${currentTranslation.isMachineTranslated ? 'bg-gb-purple-light' : 'bg-gb-bg-soft'}`}
-                            >
-                              <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-gb-fg transition-transform ${currentTranslation.isMachineTranslated ? 'translate-x-6' : 'translate-x-1'}`}
-                              />
-                            </button>
-                            <span className="text-xs font-mono text-gb-fg-dark">
-                              {currentTranslation.isMachineTranslated ? 'Machine Translated' : 'Human Translated'}
-                            </span>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="block text-sm mb-2 text-gb-fg-dark">Summary ({lang.toUpperCase()})</label>
-                          <Textarea 
-                            rows={3}
-                            value={currentTranslation.summary}
-                            onChange={e => updateTranslation('summary', e.target.value)}
-                            placeholder={lang === 'fa' ? 'خلاصه داستان پست...' : 'Brief description of the post...'}
-                            dir={lang === 'fa' ? 'rtl' : 'ltr'}
-                          />
-                        </div>
-
-                        <div>
-                          <div className="flex justify-between items-end mb-2">
-                            <label className="block text-sm text-gb-fg-dark">Content (Markdown)</label>
-                            <div className="flex bg-gb-bg-soft rounded overflow-hidden text-xs shrink-0" dir="ltr">
-                              <label className="cursor-pointer px-3 py-1.5 text-gb-fg-dark hover:text-gb-fg transition-colors flex items-center border-r border-gb-fg-dark/30">
-                                <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  className="hidden" 
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (!file) return;
-                                    const formData = new FormData();
-                                    formData.append('image', file);
-                                    try {
-                                      const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                                      if (res.ok) {
-                                        const data = await res.json();
-                                        updateContentAndReadTime(currentTranslation.content + `\n![image](${data.url})`);
-                                      }
-                                    } catch(err) {}
-                                  }} 
-                                />
-                                Insert Image
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => setIsPreviewMode(false)}
-                                className={`px-3 py-1.5 transition-colors cursor-pointer ${!isPreviewMode ? 'bg-gb-purple-light text-gb-bg font-bold' : 'text-gb-fg-dark hover:text-gb-fg'}`}
-                              >
-                                Write
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setIsPreviewMode(true)}
-                                className={`px-3 py-1.5 transition-colors cursor-pointer ${isPreviewMode ? 'bg-gb-purple-light text-gb-bg font-bold' : 'text-gb-fg-dark hover:text-gb-fg'}`}
-                              >
-                                Preview
-                              </button>
-                            </div>
-                          </div>
-                          
-                          {!isPreviewMode ? (
-                            <Textarea 
-                              rows={15}
-                              value={currentTranslation.content}
-                              onChange={e => updateContentAndReadTime(e.target.value)}
-                              className="font-mono text-sm leading-relaxed"
-                              placeholder={lang === 'fa' ? '# سر تیتر\nمتن در اینجا...' : '# Header\nWrite markdown here...'}
-                              dir={lang === 'fa' ? 'rtl' : 'ltr'}
-                            />
-                          ) : (
-                            <div className="w-full bg-gb-bg-light/30 border border-gb-bg-soft rounded px-6 py-4 min-h-[350px] max-h-[600px] overflow-y-auto" dir={lang === 'fa' ? 'rtl' : 'ltr'}>
-                              <MarkdownRenderer content={currentTranslation.content || '*No content*'} />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end p-6 bg-gb-bg-soft/10 border-t border-gb-bg-soft">
-              <Button type="submit" className="bg-gb-yellow-light text-gb-bg hover:bg-gb-yellow border-transparent font-bold">
-                Save Post
-              </Button>
-            </div>
           </form>
         </Card>
       </div>
@@ -1142,6 +367,19 @@ export function AdminPanel() {
             </button>
 
             <button
+              onClick={() => setActiveTab('categories')}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded transition-all text-sm w-full text-start shrink-0 cursor-pointer ${
+                activeTab === 'categories'
+                  ? 'bg-gb-orange-light/10 text-gb-orange-light border-l-2 border-gb-orange-light font-bold'
+                  : 'hover:bg-gb-bg-soft text-gb-fg-dark hover:text-gb-fg border-l-2 border-transparent'
+              }`}
+            >
+              <FolderIcon size={18} />
+              <span>Categories</span>
+              <span className="ml-auto text-xs bg-gb-bg-soft px-1.5 py-0.5 rounded border border-gb-bg-light/40 font-bold tabular-nums">{categories.length}</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('settings')}
               className={`flex items-center gap-3 px-3 py-2.5 rounded transition-all text-sm w-full text-start shrink-0 cursor-pointer ${
                 activeTab === 'settings'
@@ -1177,589 +415,179 @@ export function AdminPanel() {
 
       {/* Main Panel Content Area */}
       <div className="flex-1 min-w-0">
-        {successMessage && (
-          <div className="bg-gb-green-light/10 text-gb-green-light px-4 py-3 mb-6 rounded border border-gb-green-light/30 font-mono text-sm animate-in fade-in duration-300">
-            {successMessage}
-          </div>
-        )}
-
-        {/* Dashboard Title & Quick Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-gb-bg-soft/50 pb-4">
-          <div>
-            <h2 className="text-3xl font-mono text-gb-fg capitalize">{activeTab}</h2>
-            <p className="text-sm text-gb-fg-dark font-mono mt-1">
-              {activeTab === 'posts' && 'Create, edit, and manage blog posts.'}
-              {activeTab === 'comments' && 'Moderate user comments across posts.'}
-              {activeTab === 'products' && 'Manage shop items, books, and templates.'}
-              {activeTab === 'feedback' && 'View and manage user bug reports and feedbacks.'}
-              {activeTab === 'settings' && 'Configure global site preferences and maintenance modes.'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {activeTab !== 'comments' && activeTab !== 'settings' && activeTab !== 'feedback' && (
-              <Button 
-                onClick={() => {
-                  setIsCreatingMode(true);
-                  setEditingFormTab('metadata');
-                  if (activeTab === 'posts') {
-                    setEditingPost({
-                      translations: [
-                        { language: 'en', title: '', summary: '', content: '', readTime: 5 },
-                        { language: 'fa', title: '', summary: '', content: '', readTime: 5 }
-                      ]
-                    });
-                  } else if (activeTab === 'products') {
-                    setEditingProduct({
-                      translations: [
-                        { language: 'en', title: '', description: '', features: [], price: 0 },
-                        { language: 'fa', title: '', description: '', features: [], price: 0 }
-                      ]
-                    });
-                  }
-                  setIsPreviewMode(false);
-                }}
-                className="gap-2 bg-gb-green-light text-gb-bg hover:bg-gb-green border-transparent font-mono cursor-pointer"
-              >
-                <PlusIcon size={16} /> New {activeTab === 'posts' ? 'Post' : 'Product'}
-              </Button>
+        {/* If we are editing post or product, we don't display the main dashboard header */}
+        {((activeTab !== 'posts' || !editingPost) && (activeTab !== 'products' || !editingProduct)) && (
+          <>
+            {successMessage && (
+              <div className="bg-gb-green-light/10 text-gb-green-light px-4 py-3 mb-6 rounded border border-gb-green-light/30 font-mono text-sm animate-in fade-in duration-300">
+                {successMessage}
+              </div>
             )}
 
-            <Button 
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setIsSelectionMode(!isSelectionMode);
-                if (isSelectionMode) setSelectedItems([]);
-              }}
-              className={`gap-2 font-mono cursor-pointer ${isSelectionMode ? 'bg-gb-red-light/20 text-gb-red-light border-gb-red-light' : ''}`}
-            >
-              {isSelectionMode ? <XIcon size={16} /> : <CheckSquareIcon size={16} />} 
-              {isSelectionMode ? 'Cancel' : 'Select'}
-            </Button>
-          </div>
-        </div>
+            {/* Dashboard Title & Quick Actions */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-gb-bg-soft/50 pb-4">
+              <div>
+                <h2 className="text-3xl font-mono text-gb-fg capitalize">{activeTab}</h2>
+                <p className="text-sm text-gb-fg-dark font-mono mt-1">
+                  {activeTab === 'posts' && 'Create, edit, and manage blog posts.'}
+                  {activeTab === 'comments' && 'Moderate user comments across posts.'}
+                  {activeTab === 'products' && 'Manage shop items, books, and templates.'}
+                  {activeTab === 'feedback' && 'View and manage user bug reports and feedbacks.'}
+                  {activeTab === 'settings' && 'Configure global site preferences and maintenance modes.'}
+                </p>
+              </div>
 
-        {/* Content list panels */}
+              <div className="flex items-center gap-3">
+                {activeTab !== 'comments' && activeTab !== 'settings' && activeTab !== 'feedback' && (
+                  <Button 
+                    onClick={() => {
+                      setIsCreatingMode(true);
+                      setEditingFormTab('metadata');
+                      setOriginalPostId(null);
+                      if (activeTab === 'posts') {
+                        setEditingPost({
+                          translations: [
+                            { language: 'en', title: '', summary: '', content: '', readTime: 5 },
+                            { language: 'fa', title: '', summary: '', content: '', readTime: 5 }
+                          ]
+                        });
+                      } else if (activeTab === 'products') {
+                        setEditingProduct({
+                          translations: [
+                            { language: 'en', title: '', description: '', features: [], price: 0 },
+                            { language: 'fa', title: '', description: '', features: [], price: 0 }
+                          ]
+                        });
+                      }
+                      setIsPreviewMode(false);
+                    }}
+                    className="gap-2 bg-gb-green-light text-gb-bg hover:bg-gb-green border-transparent font-mono cursor-pointer"
+                  >
+                    <PlusIcon size={16} /> New {activeTab === 'posts' ? 'Post' : 'Product'}
+                  </Button>
+                )}
+
+                {activeTab !== 'settings' && activeTab !== 'feedback' && (
+                  <Button 
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setIsSelectionMode(!isSelectionMode);
+                      if (isSelectionMode) setSelectedItems([]);
+                    }}
+                    className={`gap-2 font-mono cursor-pointer ${isSelectionMode ? 'bg-gb-red-light/20 text-gb-red-light border-gb-red-light' : ''}`}
+                  >
+                    {isSelectionMode ? <XIcon size={16} /> : <CheckSquareIcon size={16} />} 
+                    {isSelectionMode ? 'Cancel' : 'Select'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
         {loading ? (
           <p className="font-mono text-gb-fg-dark animate-pulse">Loading {activeTab}...</p>
         ) : error ? (
           <p className="font-mono text-gb-orange-light">{error}</p>
         ) : (
           <>
-            {/* POSTS PANEL */}
             {activeTab === 'posts' && (
-              <div className="space-y-4">
-                {posts.map(post => {
-                  const isSelected = selectedItems.includes(post.id);
-                  return (
-                    <Card 
-                      key={post.id} 
-                      className={`group relative flex flex-col justify-between !p-5 transition-all duration-300 border-2 ${
-                        isSelectionMode 
-                          ? isSelected 
-                            ? 'border-gb-red-light bg-gb-red-light/5 hover:border-gb-red-light' 
-                            : 'border-gb-bg-soft hover:border-gb-red-light/50 cursor-pointer'
-                          : 'border-gb-bg-soft/60 hover:border-gb-orange-light hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_rgba(254,128,25,0.15)] cursor-pointer'
-                      }`}
-                      onClick={() => {
-                        if (isSelectionMode) {
-                          toggleSelection(post.id);
-                        } else {
-                          setEditingPost(post);
-                          setEditingFormTab('metadata');
-                          setIsPreviewMode(false);
-                          setIsCreatingMode(false);
-                        }
-                      }}
-                    >
-                      <div className="flex gap-4 items-start">
-                        {isSelectionMode && (
-                          <div className="text-gb-red-light shrink-0 mt-1">
-                            {isSelected ? <CheckSquareIcon size={20} /> : <SquareIcon size={20} className="text-gb-fg-dark/50" />}
-                          </div>
-                        )}
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-gb-bg-light/40 border border-gb-bg-soft text-gb-fg-dark rounded-sm">
-                              {post.type || 'linux'}
-                            </span>
-                            <div className="flex gap-1">
-                              {post.translations?.some(t => t.language === 'en' && t.title) && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-gb-blue-light/10 text-gb-blue-light border border-gb-blue-light/20 rounded-sm">EN</span>
-                              )}
-                              {post.translations?.some(t => t.language === 'fa' && t.title) && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-gb-green-light/10 text-gb-green-light border border-gb-green-light/20 rounded-sm">FA</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <h3 className="font-mono font-bold text-lg text-gb-fg group-hover:text-gb-orange-light transition-colors mt-2 break-all line-clamp-1">
-                            {post.translations?.find(t => t.language === 'en')?.title || post.translations?.find(t => t.language === 'fa')?.title || 'Untitled'}
-                          </h3>
-
-                          <p className="text-xs text-gb-fg-dark font-mono mt-1 break-all line-clamp-2 leading-relaxed">
-                            {post.translations?.find(t => t.language === 'en')?.summary || post.translations?.find(t => t.language === 'fa')?.summary || 'No summary description.'}
-                          </p>
-                          
-                          <div className="text-[10px] text-gb-fg-dark/60 font-mono mt-3 flex items-center gap-3">
-                            <span>{post.date}</span>
-                            <span>•</span>
-                            <span className="font-semibold text-gb-yellow-light/80">{post.id}</span>
-                            <span>•</span>
-                            <span>{post.upvotes} upvotes</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {!isSelectionMode && (
-                        <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button 
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingPost(post);
-                              setEditingFormTab('metadata');
-                              setIsPreviewMode(false);
-                              setIsCreatingMode(false);
-                            }}
-                            className="text-gb-yellow-light hover:text-gb-yellow p-1.5"
-                            title="Edit"
-                          >
-                            <PencilIcon size={16} />
-                          </Button>
-                          <Button 
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(post.id);
-                            }}
-                            className="text-gb-orange-light hover:text-gb-orange p-1.5"
-                            title="Delete"
-                          >
-                            <TrashIcon size={16} />
-                          </Button>
-                        </div>
-                      )}
-                    </Card>
-                  );
-                })}
-                {posts.length === 0 && (
-                  <p className="font-mono text-gb-fg-dark italic text-center py-8 border-2 border-dashed border-gb-bg-soft rounded-lg">No posts found.</p>
-                )}
-              </div>
+              <AdminPosts
+                secret={secret}
+                posts={posts}
+                setPosts={setPosts}
+                loading={loading}
+                setLoading={setLoading}
+                editingPost={editingPost}
+                setEditingPost={setEditingPost}
+                originalPostId={originalPostId}
+                setOriginalPostId={setOriginalPostId}
+                editingFormTab={editingFormTab}
+                setEditingFormTab={setEditingFormTab}
+                isPreviewMode={isPreviewMode}
+                setIsPreviewMode={setIsPreviewMode}
+                isCreatingMode={isCreatingMode}
+                setIsCreatingMode={setIsCreatingMode}
+                isSelectionMode={isSelectionMode}
+                setIsSelectionMode={setIsSelectionMode}
+                selectedItems={selectedItems}
+                setSelectedItems={setSelectedItems}
+                toggleSelection={toggleSelection}
+                setSuccessMessage={setSuccessMessage}
+                fetchPosts={fetchPosts}
+                allExistingTags={allExistingTags}
+              />
             )}
 
-            {/* COMMENTS PANEL */}
-            {activeTab === 'comments' && (
-              <div className="space-y-4">
-                {comments.map(comment => {
-                  const parentComment = comment.parent_id ? comments.find(c => c.id === comment.parent_id) : null;
-                  const isSelected = selectedItems.includes(comment.id);
-                  return (
-                    <Card 
-                      key={comment.id} 
-                      className={`group relative flex flex-col justify-between !p-5 transition-all duration-300 border-2 ${
-                        isSelectionMode 
-                          ? isSelected 
-                            ? 'border-gb-red-light bg-gb-red-light/5 hover:border-gb-red-light' 
-                            : 'border-gb-bg-soft hover:border-gb-red-light/50 cursor-pointer'
-                          : 'border-gb-bg-soft/60 hover:border-gb-orange-light'
-                      }`}
-                      onClick={() => {
-                        if (isSelectionMode) {
-                          toggleSelection(comment.id);
-                        }
-                      }}
-                    >
-                      <div className="flex gap-4 items-start">
-                        {isSelectionMode && (
-                          <div className="text-gb-red-light shrink-0 mt-1">
-                            {isSelected ? <CheckSquareIcon size={20} /> : <SquareIcon size={20} className="text-gb-fg-dark/50" />}
-                          </div>
-                        )}
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <img src={comment.user.avatar_url} alt={comment.user.username} className="w-5 h-5 rounded-full border border-gb-bg-soft" />
-                            <span className="font-mono text-sm font-bold text-gb-aqua-light">{comment.user.username}</span>
-                            <span className="text-[10px] text-gb-fg-dark/60 font-mono">{new Date(comment.created_at).toLocaleString()}</span>
-                            <span className="text-[10px] px-2 py-0.5 bg-gb-purple-light/10 text-gb-purple-light border border-gb-purple-light/20 rounded-sm font-mono ml-auto">
-                              Post: {comment.post_id}
-                            </span>
-                          </div>
-
-                          {parentComment ? (
-                            <div className="text-xs font-mono text-gb-fg-dark/70 mt-3 pl-3 border-l-2 border-gb-fg-dark/30 italic bg-gb-bg-soft/30 py-1.5 px-2 rounded-sm break-all line-clamp-1">
-                              Replying to @{parentComment.user.username}: {parentComment.content}
-                            </div>
-                          ) : comment.parent_id ? (
-                            <div className="text-xs font-mono text-gb-fg-dark/70 mt-3 pl-3 border-l-2 border-gb-fg-dark/30 italic bg-gb-bg-soft/30 py-1.5 px-2 rounded-sm">
-                              Replying to U#{comment.parent_id}
-                            </div>
-                          ) : null}
-
-                          <div className="text-sm font-mono text-gb-fg mt-3 whitespace-pre-wrap leading-relaxed pl-2 border-l-2 border-gb-orange-light/20">
-                            {comment.content}
-                          </div>
-                        </div>
-                      </div>
-
-                      {!isSelectionMode && (
-                        <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button 
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteComment(comment.id);
-                            }}
-                            className="text-gb-orange-light hover:text-gb-orange p-1.5"
-                            title="Delete Comment"
-                          >
-                            <TrashIcon size={16} />
-                          </Button>
-                        </div>
-                      )}
-                    </Card>
-                  );
-                })}
-                {comments.length === 0 && (
-                  <p className="font-mono text-gb-fg-dark italic text-center py-8 border-2 border-dashed border-gb-bg-soft rounded-lg">No comments found.</p>
-                )}
-              </div>
-            )}
-
-            {/* PRODUCTS PANEL */}
             {activeTab === 'products' && (
-              <div className="space-y-4 product-list">
-                {products.map(product => {
-                  const title = product.translations?.find(t => t.language === 'en')?.title 
-                    || product.translations?.find(t => t.language === 'fa')?.title 
-                    || 'Untitled';
-                  const isSelected = selectedItems.includes(product.id);
-                  return (
-                    <Card 
-                      key={product.id} 
-                      className={`group relative flex flex-col justify-between !p-5 product-card product-item transition-all duration-300 border-2 ${
-                        isSelectionMode 
-                          ? isSelected 
-                            ? 'border-gb-red-light bg-gb-red-light/5 hover:border-gb-red-light' 
-                            : 'border-gb-bg-soft hover:border-gb-red-light/50 cursor-pointer'
-                          : 'border-gb-bg-soft/60 hover:border-gb-orange-light hover:-translate-y-0.5 hover:shadow-[4px_4px_0_0_rgba(254,128,25,0.15)] cursor-pointer'
-                      }`}
-                      onClick={() => {
-                        if (isSelectionMode) {
-                          toggleSelection(product.id);
-                        } else {
-                          let parsedMetadata = product.metadata;
-                          if (typeof parsedMetadata === 'string') {
-                            try {
-                              parsedMetadata = JSON.parse(parsedMetadata);
-                            } catch (err) {
-                              parsedMetadata = {};
-                            }
-                          }
-                          setEditingProduct({ ...product, metadata: parsedMetadata as any });
-                          setEditingFormTab('metadata');
-                          setIsCreatingMode(false);
-                        }
-                      }}
-                    >
-                      <div className="flex gap-4 items-start">
-                        {isSelectionMode && (
-                          <div className="text-gb-red-light shrink-0 mt-1">
-                            {isSelected ? <CheckSquareIcon size={20} /> : <SquareIcon size={20} className="text-gb-fg-dark/50" />}
-                          </div>
-                        )}
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-gb-bg-light/40 border border-gb-bg-soft text-gb-fg-dark rounded-sm">
-                              {product.type || 'latex'}
-                            </span>
-                            {product.metadata?.format && (
-                              <span className="text-[9px] font-bold px-1.5 py-0.2 bg-gb-purple-light/10 text-gb-purple-light border border-gb-purple-light/20 rounded-sm">
-                                {product.metadata.format}
-                              </span>
-                            )}
-                            <div className="flex gap-1">
-                              {product.translations?.some(t => t.language === 'en' && t.title) && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-gb-blue-light/10 text-gb-blue-light border border-gb-blue-light/20 rounded-sm">EN</span>
-                              )}
-                              {product.translations?.some(t => t.language === 'fa' && t.title) && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-gb-green-light/10 text-gb-green-light border border-gb-green-light/20 rounded-sm">FA</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <h3 className="font-mono font-bold text-lg text-gb-fg group-hover:text-gb-orange-light transition-colors mt-2 break-all line-clamp-1">
-                            {title}
-                          </h3>
-
-                          <p className="text-xs text-gb-fg-dark font-mono mt-1 break-all line-clamp-2 leading-relaxed">
-                            {product.translations?.find(t => t.language === 'en')?.description || product.translations?.find(t => t.language === 'fa')?.description || 'No description available.'}
-                          </p>
-                          
-                          <div className="text-[10px] text-gb-fg-dark/60 font-mono mt-3 flex items-center gap-3">
-                            <span className="text-gb-yellow-light font-bold">
-                              ${product.translations?.find((t: any) => t.language === 'en')?.price ?? 0}
-                            </span>
-                            <span>•</span>
-                            <span className="font-semibold text-gb-aqua-light">{product.id}</span>
-                            {product.metadata?.author && (
-                              <>
-                                <span>•</span>
-                                <span>By {product.metadata.author}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {!isSelectionMode && (
-                        <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button 
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              let parsedMetadata = product.metadata;
-                              if (typeof parsedMetadata === 'string') {
-                                try {
-                                  parsedMetadata = JSON.parse(parsedMetadata);
-                                } catch (err) {
-                                  parsedMetadata = {};
-                                }
-                              }
-                              setEditingProduct({ ...product, metadata: parsedMetadata as any });
-                              setEditingFormTab('metadata');
-                              setIsCreatingMode(false);
-                            }}
-                            className="text-gb-yellow-light hover:text-gb-yellow p-1.5 edit-button"
-                            title="Edit"
-                          >
-                            <PencilIcon size={16} />
-                          </Button>
-                          <Button 
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteProduct(product.id);
-                            }}
-                            className="text-gb-orange-light hover:text-gb-orange p-1.5 delete-button"
-                            title="Delete"
-                          >
-                            <TrashIcon size={16} />
-                          </Button>
-                        </div>
-                      )}
-                    </Card>
-                  );
-                })}
-                {products.length === 0 && (
-                  <p className="font-mono text-gb-fg-dark italic text-center py-8 border-2 border-dashed border-gb-bg-soft rounded-lg">No products found.</p>
-                )}
-              </div>
+              <AdminProducts
+                secret={secret}
+                products={products}
+                setProducts={setProducts}
+                loading={loading}
+                setLoading={setLoading}
+                editingProduct={editingProduct}
+                setEditingProduct={setEditingProduct}
+                editingFormTab={editingFormTab}
+                setEditingFormTab={setEditingFormTab}
+                isCreatingMode={isCreatingMode}
+                setIsCreatingMode={setIsCreatingMode}
+                isSelectionMode={isSelectionMode}
+                setIsSelectionMode={setIsSelectionMode}
+                selectedItems={selectedItems}
+                setSelectedItems={setSelectedItems}
+                toggleSelection={toggleSelection}
+                setSuccessMessage={setSuccessMessage}
+              />
             )}
 
-            {/* FEEDBACK PANEL */}
+            {activeTab === 'comments' && (
+              <AdminComments
+                secret={secret}
+                comments={comments}
+                setComments={setComments}
+                loading={loading}
+                setLoading={setLoading}
+                isSelectionMode={isSelectionMode}
+                selectedItems={selectedItems}
+                toggleSelection={toggleSelection}
+                setSuccessMessage={setSuccessMessage}
+              />
+            )}
+
             {activeTab === 'feedback' && (
-              <div className="space-y-4">
-                {feedbacks.map(fb => {
-                  return (
-                    <Card 
-                      key={fb.id} 
-                      className="group relative flex flex-col justify-between !p-5 transition-all duration-300 border-2 border-gb-bg-soft/60 hover:border-gb-orange-light"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          {fb.user ? (
-                            <>
-                              <img src={fb.user.avatar_url} alt={fb.user.username} className="w-5 h-5 rounded-full border border-gb-bg-soft" />
-                              <span className="font-mono text-sm font-bold text-gb-aqua-light">{fb.user.username}</span>
-                            </>
-                          ) : (
-                            <span className="font-mono text-sm font-bold text-gb-fg-dark italic">Anonymous</span>
-                          )}
-                          <span className="text-[10px] text-gb-fg-dark/60 font-mono">{new Date(fb.created_at).toLocaleString()}</span>
-                          <span className="text-[10px] px-2 py-0.5 bg-gb-orange-light/10 text-gb-orange-light border border-gb-orange-light/20 rounded-sm font-mono ml-auto">
-                            Route: {fb.route}
-                          </span>
-                        </div>
-
-                        <p className="font-mono text-sm text-gb-fg mt-3 whitespace-pre-wrap break-all leading-relaxed bg-gb-bg-soft/30 p-3 border border-gb-bg-soft/50">
-                          {fb.content}
-                        </p>
-                      </div>
-
-                      {/* Delete button */}
-                      <div className="absolute right-4 bottom-4 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteFeedback(fb.id);
-                          }}
-                          className="p-1.5 bg-gb-red/10 text-gb-red-light border-gb-red-light/20 hover:bg-gb-red-light hover:text-gb-bg hover:border-transparent transition-all rounded cursor-pointer"
-                          title="Delete Feedback"
-                        >
-                          <TrashIcon size={16} />
-                        </button>
-                      </div>
-                    </Card>
-                  );
-                })}
-                {feedbacks.length === 0 && (
-                  <p className="font-mono text-gb-fg-dark italic text-center py-8 border-2 border-dashed border-gb-bg-soft rounded-lg">No feedback found.</p>
-                )}
-              </div>
+              <AdminFeedbacks
+                secret={secret}
+                feedbacks={feedbacks}
+                setFeedbacks={setFeedbacks}
+                loading={loading}
+                setLoading={setLoading}
+                setSuccessMessage={setSuccessMessage}
+              />
             )}
 
-            {/* SETTINGS PANEL */}
             {activeTab === 'settings' && (
-              <Card className="border-2 border-gb-bg-soft/60 p-6 font-mono space-y-8">
-                <div>
-                  <h3 className="text-xl font-bold text-gb-fg mb-2">Global Preferences</h3>
-                  <p className="text-sm text-gb-fg-dark">Configure site settings and features.</p>
-                </div>
-                
-                <div className="border-t border-gb-bg-soft/50 pt-6 space-y-6">
-                  {[
-                    {
-                      key: 'site_maintenance' as const,
-                      label: 'Site-wide Maintenance Mode',
-                      desc: 'Restricts public access to the entire website, displaying an "Under Maintenance" notice. Admins can still bypass and access all pages.',
-                      activeLabel: 'Under Maintenance',
-                      inactiveLabel: 'Published',
-                    },
-                    {
-                      key: 'blog_maintenance' as const,
-                      label: 'Blog Maintenance Mode',
-                      desc: 'Restricts public access to the blog posts feed and individual post pages, displaying an "Under Maintenance" notice.',
-                      activeLabel: 'Under Maintenance',
-                      inactiveLabel: 'Published',
-                    },
-                    {
-                      key: 'comments_maintenance' as const,
-                      label: 'Comments Maintenance Mode',
-                      desc: 'Disables posting new comments while keeping existing comments readable.',
-                      activeLabel: 'Disabled',
-                      inactiveLabel: 'Enabled',
-                    },
-                    {
-                      key: 'store_maintenance' as const,
-                      label: 'Store Maintenance Mode',
-                      desc: 'Restricts public access to the store page, displaying an "Under Maintenance" notice. Admins can still preview products.',
-                      activeLabel: 'Under Maintenance',
-                      inactiveLabel: 'Published',
-                    },
-                    {
-                      key: 'feedback_enabled' as const,
-                      label: 'Feedback Feature Status',
-                      desc: 'Toggle the floating feedback button on/off across allowed paths.',
-                      activeLabel: 'Enabled',
-                      inactiveLabel: 'Disabled',
-                    },
-                  ].map(({ key, label, desc, activeLabel, inactiveLabel }, idx) => {
-                    const isChecked = !!settings[key];
-                    return (
-                      <div key={key} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${idx > 0 ? 'border-t border-gb-bg-soft/30 pt-6' : ''}`}>
-                        <div className="space-y-1 max-w-xl">
-                          <h4 className="text-base font-bold text-gb-fg">{label}</h4>
-                          <p className="text-xs text-gb-fg-dark">{desc}</p>
-                        </div>
-                        
-                        <div className="flex items-center gap-3">
-                          <span className={`text-xs font-bold px-2.5 py-1 rounded border transition-all duration-300 ${
-                            isChecked 
-                              ? 'bg-gb-red/10 text-gb-red-light border-gb-red-light/20' 
-                              : 'bg-gb-green/10 text-gb-green-light border-gb-green-light/20'
-                          }`}>
-                            {isChecked ? activeLabel : inactiveLabel}
-                          </span>
-                          
-                          {/* Retro switch button */}
-                          <button
-                            onClick={() => handleToggleSetting(key, !isChecked)}
-                            disabled={savingSettings}
-                            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gb-orange-light focus:ring-offset-2 focus:ring-offset-gb-bg ${
-                              isChecked ? 'bg-gb-red-light' : 'bg-gb-bg-light'
-                            } ${savingSettings ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            role="switch"
-                            aria-checked={isChecked}
-                          >
-                            <span
-                              aria-hidden="true"
-                              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-gb-bg shadow ring-0 transition duration-200 ease-in-out ${
-                                isChecked ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+              <AdminSettings
+                secret={secret}
+                settings={settings}
+                setSettings={setSettings}
+                savingSettings={savingSettings}
+                setSavingSettings={setSavingSettings}
+                setSuccessMessage={setSuccessMessage}
+                setError={setError}
+              />
+            )}
 
-                  {/* Feedback Allowed Paths Input */}
-                  <div className="border-t border-gb-bg-soft/30 pt-6">
-                    <div className="flex flex-col gap-2">
-                      <div className="space-y-1">
-                        <h4 className="text-base font-bold text-gb-fg">Feedback Allowed Paths</h4>
-                        <p className="text-xs text-gb-fg-dark">
-                          Comma-separated paths or prefixes where the feedback button is active. Use '*' or leave empty for everywhere.
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center gap-3 mt-2">
-                        <Input
-                          type="text"
-                          value={settings.feedback_allowed_paths || ''}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setSettings(prev => ({ ...prev, feedback_allowed_paths: val }));
-                          }}
-                          onBlur={async (e) => {
-                            setSavingSettings(true);
-                            try {
-                              const res = await fetch('/api/settings', {
-                                method: 'PUT',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Authorization': `Bearer ${secret}`
-                                },
-                                body: JSON.stringify({
-                                  key: 'feedback_allowed_paths',
-                                  value: e.target.value
-                                })
-                              });
-                              if (res.ok) {
-                                setSuccessMessage('Settings saved successfully');
-                                setTimeout(() => setSuccessMessage(null), 3000);
-                              } else {
-                                setError('Failed to save settings');
-                              }
-                            } catch (err) {
-                              setError('Network error saving settings');
-                            } finally {
-                              setSavingSettings(false);
-                            }
-                          }}
-                          disabled={savingSettings}
-                          placeholder="e.g. *, /store, /post"
-                          className="max-w-md font-mono"
-                        />
-                        {savingSettings && (
-                          <span className="text-xs text-gb-fg-dark/50 font-mono animate-pulse">Saving...</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
+            {activeTab === 'categories' && (
+              <AdminCategories
+                secret={secret}
+                categories={categories}
+                setCategories={setCategories}
+                loading={loading}
+                setSuccessMessage={setSuccessMessage}
+                setError={setError}
+              />
             )}
           </>
         )}

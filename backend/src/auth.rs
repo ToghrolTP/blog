@@ -337,3 +337,23 @@ pub async fn manual_auth(
 
     Ok((jar.add(cookie), Json(final_user)))
 }
+
+#[derive(Debug, Deserialize)]
+pub struct AdminAuthRequest {
+    pub secret: String,
+}
+
+pub async fn admin_auth(
+    Json(payload): Json<AdminAuthRequest>,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let expected_secret = env::var("ADMIN_SECRET").map_err(|_| {
+        (StatusCode::INTERNAL_SERVER_ERROR, "Server misconfiguration: ADMIN_SECRET not set".to_string())
+    })?;
+
+    if payload.secret == expected_secret {
+        Ok(StatusCode::OK)
+    } else {
+        Err((StatusCode::UNAUTHORIZED, "Invalid secret key".to_string()))
+    }
+}
+

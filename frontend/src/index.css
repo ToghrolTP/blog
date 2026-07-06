@@ -73,17 +73,33 @@
 }
 
 /* Enforce standard spacing and sans-serif font for all typography classes in RTL */
-[dir="rtl"] .font-mono, 
-[dir="rtl"] .font-sans,
-[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6,
-[dir="rtl"] .text-3xl, [dir="rtl"] .text-4xl, [dir="rtl"] .text-2xl, [dir="rtl"] .text-xl {
+[dir="rtl"].font-mono, [dir="rtl"] .font-mono, 
+[dir="rtl"].font-sans, [dir="rtl"] .font-sans,
+h1[dir="rtl"], [dir="rtl"] h1, 
+h2[dir="rtl"], [dir="rtl"] h2, 
+h3[dir="rtl"], [dir="rtl"] h3, 
+h4[dir="rtl"], [dir="rtl"] h4, 
+h5[dir="rtl"], [dir="rtl"] h5, 
+h6[dir="rtl"], [dir="rtl"] h6,
+[dir="rtl"].text-3xl, [dir="rtl"] .text-3xl, 
+[dir="rtl"].text-4xl, [dir="rtl"] .text-4xl, 
+[dir="rtl"].text-2xl, [dir="rtl"] .text-2xl, 
+[dir="rtl"].text-xl, [dir="rtl"] .text-xl {
   font-family: var(--font-sans) !important; /* Prevents monospace space character from causing wide word gaps */
   letter-spacing: normal !important;
   word-spacing: normal !important;
 }
 
-[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6,
-[dir="rtl"] .text-3xl, [dir="rtl"] .text-4xl, [dir="rtl"] .text-2xl, [dir="rtl"] .text-xl {
+h1[dir="rtl"], [dir="rtl"] h1, 
+h2[dir="rtl"], [dir="rtl"] h2, 
+h3[dir="rtl"], [dir="rtl"] h3, 
+h4[dir="rtl"], [dir="rtl"] h4, 
+h5[dir="rtl"], [dir="rtl"] h5, 
+h6[dir="rtl"], [dir="rtl"] h6,
+[dir="rtl"].text-3xl, [dir="rtl"] .text-3xl, 
+[dir="rtl"].text-4xl, [dir="rtl"] .text-4xl, 
+[dir="rtl"].text-2xl, [dir="rtl"] .text-2xl, 
+[dir="rtl"].text-xl, [dir="rtl"] .text-xl {
   line-height: 1.5 !important;
 }
 

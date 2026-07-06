@@ -68,7 +68,7 @@ export function CategoryButton({
         <img
           src={imgSrc}
           alt={imgAlt}
-          className="max-h-15 w-auto transition-all duration-300 opacity-90 group-hover:opacity-100 scale-100 group-hover:scale-108"
+          className="max-h-16 w-auto transition-all duration-300 opacity-90 group-hover:opacity-100 scale-100 group-hover:scale-108"
           style={{ imageRendering: 'pixelated' }}
         />
       </div>

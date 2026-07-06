@@ -27,7 +27,4 @@ ENV NODE_ENV=production
 
 EXPOSE 3000
 
-# Mount these paths as Liara disks to persist data across deployments
-VOLUME ["/app/backend/db", "/app/backend/uploads"]
-
 CMD ["./backend"]

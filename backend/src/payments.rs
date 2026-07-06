@@ -418,8 +418,29 @@ pub async fn my_downloads(
     let user_id = crate::auth::get_user_from_jar(&jar)
         .ok_or((StatusCode::UNAUTHORIZED, "Not logged in".to_string()))?;
 
-    let completed_orders: Vec<OrderDb> = sqlx::query_as(
-        "SELECT * FROM orders WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC"
+    #[derive(sqlx::FromRow)]
+    struct OrderWithTitles {
+        id: String,
+        product_id: String,
+        created_at: String,
+        title_en: Option<String>,
+        title_fa: Option<String>,
+    }
+
+    let completed_orders: Vec<OrderWithTitles> = sqlx::query_as(
+        r#"
+        SELECT 
+            o.id, 
+            o.product_id, 
+            o.created_at,
+            t_en.title as title_en,
+            t_fa.title as title_fa
+        FROM orders o
+        LEFT JOIN product_translations t_en ON o.product_id = t_en.product_id AND t_en.language = 'en'
+        LEFT JOIN product_translations t_fa ON o.product_id = t_fa.product_id AND t_fa.language = 'fa'
+        WHERE o.user_id = ? AND o.status = 'completed'
+        ORDER BY o.created_at DESC
+        "#
     )
     .bind(user_id)
     .fetch_all(&pool)
@@ -430,24 +451,8 @@ pub async fn my_downloads(
     let mut items = Vec::new();
 
     for order in completed_orders {
-        let title_en: Option<(String,)> = sqlx::query_as(
-            "SELECT title FROM product_translations WHERE product_id = ? AND language = 'en'"
-        )
-        .bind(&order.product_id)
-        .fetch_optional(&pool)
-        .await
-        .unwrap_or(None);
-
-        let title_fa: Option<(String,)> = sqlx::query_as(
-            "SELECT title FROM product_translations WHERE product_id = ? AND language = 'fa'"
-        )
-        .bind(&order.product_id)
-        .fetch_optional(&pool)
-        .await
-        .unwrap_or(None);
-
-        let t_en = title_en.map(|t| t.0).unwrap_or_else(|| "Product".to_string());
-        let t_fa = title_fa.map(|t| t.0).unwrap_or_else(|| "محصول".to_string());
+        let t_en = order.title_en.unwrap_or_else(|| "Product".to_string());
+        let t_fa = order.title_fa.unwrap_or_else(|| "محصول".to_string());
 
         let exp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 86400;
         let claims = crate::products::DownloadClaims {
