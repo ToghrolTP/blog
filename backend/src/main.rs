@@ -124,8 +124,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nest_service("/uploads", ServeDir::new("uploads"))
         .fallback_service(ServeDir::new(frontend_dist).fallback(ServeFile::new(index_file)));
 
-    let listener = tokio::net::TcpListener::bind("[::]:3000").await?;
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     println!("Server running on port 3000");
+    use std::io::Write;
+    std::io::stdout().flush().ok();
     axum::serve(listener, app).await?;
 
     Ok(())
