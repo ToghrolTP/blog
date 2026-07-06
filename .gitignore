@@ -70,7 +70,7 @@ Thumbs.db
 *.log
 __pycache__/
 *.pyc
-prod_build/
+# prod_build/
 graphify-out/
 .obsidian/
 /google*.html

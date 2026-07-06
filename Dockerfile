@@ -1,4 +1,4 @@
-FROM ubuntu:25.10 AS runtime
+FROM ubuntu:latest AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
