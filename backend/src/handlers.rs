@@ -233,7 +233,7 @@ pub async fn update_post(
     }
 
     sqlx::query("DELETE FROM post_translations WHERE post_id = ?")
-        .bind(&final_id)
+        .bind(&id)
         .execute(&mut *tx)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
