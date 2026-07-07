@@ -19,6 +19,28 @@ fn load_base_html(target_lang: &str, dir: &str, meta: &str, body_html: &str) -> 
         .or_else(|_| std::fs::read_to_string("../frontend/index.html"))
         .unwrap_or_else(|_| "<html><head></head><body><div id=\"root\"></div><script type=\"module\" src=\"/src/main.tsx\"></script></body></html>".to_string());
 
+    // Optimize stylesheet rendering to eliminate render-blocking delay
+    if let Some(pos) = html.find("rel=\"stylesheet\"") {
+        let start_slice = &html[..pos];
+        if let Some(start_pos) = start_slice.rfind("<link") {
+            let rest_slice = &html[start_pos..];
+            if let Some(end_pos) = rest_slice.find('>') {
+                let full_tag = &rest_slice[..end_pos + 1];
+                if let Some(href_pos) = full_tag.find("href=\"") {
+                    let href_rest = &full_tag[href_pos + 6..];
+                    if let Some(href_end) = href_rest.find('\"') {
+                        let css_path = &href_rest[..href_end];
+                        let optimized_tag = format!(
+                            r#"<link rel="preload" as="style" href="{}" /><link rel="stylesheet" href="{}" media="print" onload="this.media='all'" />"#,
+                            css_path, css_path
+                        );
+                        html = html.replace(full_tag, &optimized_tag);
+                    }
+                }
+            }
+        }
+    }
+
     html = html.replace("<title>Log40</title>", "");
     html = html.replace("<title>Vite App</title>", "");
     html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
