@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { flushSync } from 'react-dom';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { SearchIcon, XIcon, SlidersHorizontalIcon, WrenchIcon } from './components/Icons';
@@ -6,11 +6,11 @@ import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { PostList } from './components/PostList';
 import { PostDetail } from './components/PostDetail';
-import { AdminPanel } from './components/AdminPanel';
-import { Store } from './components/Store';
-import { ProductDetail } from './components/ProductDetail';
-import { CheckoutVerify } from './components/CheckoutVerify';
-import { About } from './components/About';
+const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
+const Store = lazy(() => import('./components/Store').then(m => ({ default: m.Store })));
+const ProductDetail = lazy(() => import('./components/ProductDetail').then(m => ({ default: m.ProductDetail })));
+const CheckoutVerify = lazy(() => import('./components/CheckoutVerify').then(m => ({ default: m.CheckoutVerify })));
+const About = lazy(() => import('./components/About').then(m => ({ default: m.About })));
 import { TerminalWindowIcon } from './components/Icons';
 import { Post, Category } from './types';
 import { UpvoteProvider } from './contexts/UpvoteContext';
@@ -653,21 +653,23 @@ function AppContent() {
               <Header />
               
               <main className="mt-16 min-h-[50vh]">
-                <Routes>
-                  <Route path="/" element={<Home />} />
-                  <Route path="/store" element={<Store />} />
-                  <Route path="/store/product/:id" element={<ProductDetail />} />
-                  <Route path="/store/checkout/verify" element={<CheckoutVerify />} />
-                  <Route path="/post/:id" element={<PostDetail />} />
-                  <Route path="/about" element={<About />} />
-                  <Route path="/fa" element={<Home />} />
-                  <Route path="/fa/store" element={<Store />} />
-                  <Route path="/fa/store/product/:id" element={<ProductDetail />} />
-                  <Route path="/fa/store/checkout/verify" element={<CheckoutVerify />} />
-                  <Route path="/fa/post/:id" element={<PostDetail />} />
-                  <Route path="/fa/about" element={<About />} />
-                  <Route path="/admin" element={<AdminPanel />} />
-                </Routes>
+                <Suspense fallback={<div className="text-center font-mono text-gb-fg-dark py-12 animate-pulse">{t("mounting")}</div>}>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/store" element={<Store />} />
+                    <Route path="/store/product/:id" element={<ProductDetail />} />
+                    <Route path="/store/checkout/verify" element={<CheckoutVerify />} />
+                    <Route path="/post/:id" element={<PostDetail />} />
+                    <Route path="/about" element={<About />} />
+                    <Route path="/fa" element={<Home />} />
+                    <Route path="/fa/store" element={<Store />} />
+                    <Route path="/fa/store/product/:id" element={<ProductDetail />} />
+                    <Route path="/fa/store/checkout/verify" element={<CheckoutVerify />} />
+                    <Route path="/fa/post/:id" element={<PostDetail />} />
+                    <Route path="/fa/about" element={<About />} />
+                    <Route path="/admin" element={<AdminPanel />} />
+                  </Routes>
+                </Suspense>
               </main>
               
               <Footer />
