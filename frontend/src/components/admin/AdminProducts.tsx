@@ -14,6 +14,7 @@ import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
+import { compressImage } from './image';
 
 interface AdminProductsProps {
   secret: string;
@@ -275,9 +276,10 @@ export function AdminProducts({
                             onChange={async (e) => {
                               const file = e.target.files?.[0];
                               if (!file) return;
-                              const formData = new FormData();
-                              formData.append('image', file);
                               try {
+                                const compressed = await compressImage(file);
+                                const formData = new FormData();
+                                formData.append('image', compressed, 'image.webp');
                                 const res = await fetch('/api/upload', { method: 'POST', body: formData });
                                 if (res.ok) {
                                   const data = await res.json();
@@ -309,9 +311,10 @@ export function AdminProducts({
                               
                               const uploadedUrls: string[] = [];
                               for (const file of files) {
-                                const formData = new FormData();
-                                formData.append('image', file);
                                 try {
+                                  const compressed = await compressImage(file);
+                                  const formData = new FormData();
+                                  formData.append('image', compressed, 'image.webp');
                                   const res = await fetch('/api/upload', { method: 'POST', body: formData });
                                   if (res.ok) {
                                     const data = await res.json();
