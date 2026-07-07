@@ -30,30 +30,11 @@ pub async fn upload_image(mut multipart: Multipart) -> Result<impl IntoResponse,
                 .and_then(|e| e.to_str())
                 .unwrap_or("png");
                 
-            let data = field.bytes().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-
-            let (final_data, new_filename) = if let Ok(img) = image::load_from_memory(&data) {
-                let width = img.width();
-                let height = img.height();
-                let img = if width > 1200 {
-                    let new_height = (height as f64 * (1200.0 / width as f64)) as u32;
-                    img.resize(1200, new_height, image::imageops::FilterType::Triangle)
-                } else {
-                    img
-                };
-
-                let mut webp_bytes = Vec::new();
-                if img.write_to(&mut std::io::Cursor::new(&mut webp_bytes), image::ImageFormat::WebP).is_ok() {
-                    (webp_bytes, format!("{}.webp", Uuid::new_v4()))
-                } else {
-                    (data.to_vec(), format!("{}.{}", Uuid::new_v4(), ext))
-                }
-            } else {
-                (data.to_vec(), format!("{}.{}", Uuid::new_v4(), ext))
-            };
-
+            let new_filename = format!("{}.{}", Uuid::new_v4(), ext);
             let filepath = uploads_dir.join(&new_filename);
-            fs::write(&filepath, final_data).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write file: {}", e)))?;
+
+            let data = field.bytes().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+            fs::write(&filepath, data).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write file: {}", e)))?;
 
             let response = UploadResponse {
                 url: format!("/uploads/{}", new_filename),

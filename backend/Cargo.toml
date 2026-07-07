@@ -22,4 +22,3 @@ bcrypt = "0.15"
 dicebear-core = "10.3.0"
 dicebear-styles = { version = "10.2.0", features = ["glyphs"] }
 pulldown-cmark = "0.13.4"
-image = { version = "0.25", default-features = false, features = ["webp", "jpeg", "png"] }
