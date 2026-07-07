@@ -600,15 +600,10 @@ function Home() {
 }
 
 function AppContent() {
-  const [isBooting, setIsBooting] = useState(true);
   const [isSiteMaintenance, setIsSiteMaintenance] = useState(false);
   const { t, language } = useLanguage();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsBooting(false);
-    }, 800);
-
     const adminSecret = localStorage.getItem('adminSecret');
     const isParamAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isAdmin = !!adminSecret || isParamAdmin;
@@ -622,18 +617,7 @@ function AppContent() {
         }
       })
       .catch((err) => console.error("Error fetching settings:", err));
-
-    return () => clearTimeout(timer);
   }, []);
-
-  if (isBooting) {
-    return (
-      <div className="min-h-screen bg-gb-bg flex flex-col items-center justify-center p-6">
-        <div className="text-5xl mb-4 animate-pulse flex justify-center"><TerminalWindowIcon /></div>
-        <p className="text-gb-fg-dark font-mono animate-pulse">{t('mounting')}</p>
-      </div>
-    );
-  }
 
   if (isSiteMaintenance) {
     return (
