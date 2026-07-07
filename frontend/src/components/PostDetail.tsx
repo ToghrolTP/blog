@@ -1,11 +1,11 @@
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, lazy, Suspense } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Post } from "../types";
 import { ArrowLeftIcon, CalendarBlankIcon, ClockIcon, TagIcon } from "./Icons";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/Badge";
 import { Comments } from "./Comments";
-import { MarkdownRenderer } from "./MarkdownRenderer";
+const MarkdownRenderer = lazy(() => import("./MarkdownRenderer").then(m => ({ default: m.MarkdownRenderer })));
 import { useUpvotes } from "../contexts/UpvoteContext";
 import { ArrowUpIcon, BotIcon, WrenchIcon } from "./Icons";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -333,7 +333,9 @@ export function PostDetail() {
         </div>
       )}
 
-      <MarkdownRenderer content={currentTranslation.content} />
+      <Suspense fallback={<div className="text-center font-mono text-gb-fg-dark py-12 animate-pulse">{t("mounting")}</div>}>
+        <MarkdownRenderer content={currentTranslation.content} />
+      </Suspense>
       <Comments postId={post.id} />
     </article>
   );

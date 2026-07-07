@@ -5,7 +5,7 @@ import { SearchIcon, XIcon, SlidersHorizontalIcon, WrenchIcon } from './componen
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { PostList } from './components/PostList';
-import { PostDetail } from './components/PostDetail';
+const PostDetail = lazy(() => import('./components/PostDetail').then(m => ({ default: m.PostDetail })));
 const AdminPanel = lazy(() => import('./components/AdminPanel').then(m => ({ default: m.AdminPanel })));
 const Store = lazy(() => import('./components/Store').then(m => ({ default: m.Store })));
 const ProductDetail = lazy(() => import('./components/ProductDetail').then(m => ({ default: m.ProductDetail })));
