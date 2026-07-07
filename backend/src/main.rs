@@ -123,6 +123,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = app
         .nest_service("/uploads", ServeDir::new("uploads"))
         .fallback_service(ServeDir::new(frontend_dist).fallback(ServeFile::new(index_file)))
+        .layer(axum::middleware::from_fn(cache_header_middleware))
         .layer(tower_http::compression::CompressionLayer::new());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
@@ -132,4 +133,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     axum::serve(listener, app).await?;
 
     Ok(())
+}
+
+async fn cache_header_middleware(req: axum::http::Request<axum::body::Body>, next: axum::middleware::Next) -> axum::response::Response {
+    let path = req.uri().path().to_string();
+    let mut res = next.run(req).await;
+    
+    if path.starts_with("/assets/") || path.starts_with("/phosphoricon/") {
+        res.headers_mut().insert(
+            axum::http::header::CACHE_CONTROL,
+            axum::http::HeaderValue::from_static("public, max-age=31536000, immutable"),
+        );
+    } else if path.starts_with("/uploads/") {
+        res.headers_mut().insert(
+            axum::http::header::CACHE_CONTROL,
+            axum::http::HeaderValue::from_static("public, max-age=604800"),
+        );
+    }
+    res
 }
