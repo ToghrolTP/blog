@@ -122,7 +122,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = app
         .nest_service("/uploads", ServeDir::new("uploads"))
-        .fallback_service(ServeDir::new(frontend_dist).fallback(ServeFile::new(index_file)));
+        .fallback_service(ServeDir::new(frontend_dist).fallback(ServeFile::new(index_file)))
+        .layer(tower_http::compression::CompressionLayer::new());
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await?;
     println!("Server running on port 3000");
