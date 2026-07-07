@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { flushSync } from 'react-dom';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { SearchIcon, XIcon, SlidersHorizontalIcon, WrenchIcon } from './components/Icons';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -600,8 +600,10 @@ function Home() {
 }
 
 function AppContent() {
+  const location = useLocation();
   const [isSiteMaintenance, setIsSiteMaintenance] = useState(false);
   const { t, language } = useLanguage();
+  const isAdminRoute = location.pathname.includes('/admin');
 
   useEffect(() => {
     const adminSecret = localStorage.getItem('adminSecret');
@@ -649,10 +651,10 @@ function AppContent() {
     <AuthProvider>
       <UpvoteProvider>
         <div className="min-h-screen bg-gb-bg text-gb-fg p-6 sm:p-8 md:p-12 selection:bg-gb-bg-light selection:text-gb-orange-light">
-            <div className="max-w-5xl mx-auto w-full">
-              <Header />
+            <div className={`${isAdminRoute ? 'max-w-[1400px]' : 'max-w-5xl'} mx-auto w-full`}>
+              {!isAdminRoute && <Header />}
               
-              <main className="mt-16 min-h-[50vh]">
+              <main className={`${isAdminRoute ? 'mt-4 md:mt-8' : 'mt-16'} min-h-[50vh]`}>
                 <Suspense fallback={<div className="text-center font-mono text-gb-fg-dark py-12 animate-pulse">{t("mounting")}</div>}>
                   <Routes>
                     <Route path="/" element={<Home />} />
@@ -672,7 +674,7 @@ function AppContent() {
                 </Suspense>
               </main>
               
-              <Footer />
+              {!isAdminRoute && <Footer />}
               <FeedbackButton />
             </div>
           </div>
