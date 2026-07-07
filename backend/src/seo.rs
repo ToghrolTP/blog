@@ -91,12 +91,29 @@ pub async fn serve_seo_post(
                     t.language, alt_url
                 ));
             }
+
+            if !absolute_thumb.is_empty() {
+                meta.push_str(&format!(
+                    r#"<link rel="preload" as="image" href="{}" fetchpriority="high" />"#,
+                    escape_html(&absolute_thumb)
+                ));
+            }
             
             let dir = if is_fa { "rtl" } else { "ltr" };
             
             let mut article_html = String::new();
             let parser = pulldown_cmark::Parser::new(&trans.content);
             pulldown_cmark::html::push_html(&mut article_html, parser);
+
+            let img_html = if thumb.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    r#"<img src="{}" alt="{}" fetchpriority="high" />"#,
+                    escape_html(&thumb),
+                    escape_html(&trans.title)
+                )
+            };
 
             // Build body HTML containing full post contents for SEO/GEO crawlers
             // ponytail: hide SEO pre-render from visual FOUC, React replaces it on mount
@@ -107,11 +124,12 @@ pub async fn serve_seo_post(
                         <h1>{}</h1>
                         <time datetime="{}">{}</time>
                         <p><strong>{}</strong></p>
+                        {}
                     </header>
                     <section>{}</section>
                 </article>
                 </div></div>"#,
-                dir, escape_html(&trans.title), escape_html(&post.date), escape_html(&post.date), escape_html(&trans.summary), article_html
+                dir, escape_html(&trans.title), escape_html(&post.date), escape_html(&post.date), escape_html(&trans.summary), img_html, article_html
             );
 
             // Add schema markup
@@ -202,6 +220,13 @@ pub async fn serve_seo_product(
                     t.language, alt_url
                 ));
             }
+
+            if !absolute_thumb.is_empty() {
+                meta.push_str(&format!(
+                    r#"<link rel="preload" as="image" href="{}" fetchpriority="high" />"#,
+                    escape_html(&absolute_thumb)
+                ));
+            }
             
             let person_schema = format!(
                 r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"],"image":"{}/avatar.png","knowsAbout":["Rust (Programming Language)","Software Engineering","Linux","Backend Development"]}}"#,
@@ -225,6 +250,16 @@ pub async fn serve_seo_product(
                 person_schema, organization_schema, product_schema
             ));
 
+            let img_html = if thumb.is_empty() {
+                String::new()
+            } else {
+                format!(
+                    r#"<img src="{}" alt="{}" fetchpriority="high" />"#,
+                    escape_html(&thumb),
+                    escape_html(&trans.title)
+                )
+            };
+
             // Inject body product contents inside #root
             let features: Vec<String> = serde_json::from_str(&trans.features).unwrap_or_default();
             // ponytail: hide SEO pre-render from visual FOUC, React replaces it on mount
@@ -234,13 +269,14 @@ pub async fn serve_seo_product(
                     <header>
                         <h1>{}</h1>
                         <p><strong>Price:</strong> ${:.2}</p>
+                        {}
                     </header>
                     <section>
                         <h2>Description</h2>
                         <p>{}</p>
                         <h2>Features</h2>
                         <ul>"#,
-                dir, escape_html(&trans.title), trans.price, escape_html(&trans.description)
+                dir, escape_html(&trans.title), trans.price, img_html, escape_html(&trans.description)
             );
             for feat in features {
                 body_html.push_str(&format!("<li>{}</li>\n", escape_html(&feat)));
