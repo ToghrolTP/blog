@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
-import { Post } from '../../types';
+import { Post, Category } from '../../types';
 import { 
   PencilIcon, 
   TrashIcon, 
@@ -41,6 +41,7 @@ interface AdminPostsProps {
   setSuccessMessage: (m: string | null) => void;
   fetchPosts: (secret: string) => Promise<void>;
   allExistingTags: string[];
+  categories?: Category[];
 }
 
 export function AdminPosts({
@@ -66,7 +67,8 @@ export function AdminPosts({
   toggleSelection,
   setSuccessMessage,
   fetchPosts,
-  allExistingTags
+  allExistingTags,
+  categories = []
 }: AdminPostsProps) {
 
   const [showSnippetGuide, setShowSnippetGuide] = useState(false);
@@ -220,14 +222,17 @@ export function AdminPosts({
                     <div>
                       <label className="block text-sm mb-2 text-gb-fg-dark">Categories</label>
                       <div className="grid grid-cols-2 gap-2 p-3 bg-gb-bg-soft/40 border border-gb-fg-dark/20 rounded-none">
-                        {[
-                          { value: 'linux', label: 'Linux' },
-                          { value: 'cybersecurity', label: 'Cybersecurity' },
-                          { value: 'backend', label: 'Backend Engineering' },
-                          { value: 'devops', label: 'DevOps & Cloud' },
-                          { value: 'terminal', label: 'CLI & Terminal' },
-                          { value: 'academic', label: 'Academic & Writing' }
-                        ].map((cat) => {
+                        {(categories && categories.length > 0
+                          ? categories.map((cat) => ({ value: cat.id, label: cat.name }))
+                          : [
+                              { value: 'linux', label: 'Linux' },
+                              { value: 'cybersecurity', label: 'Cybersecurity' },
+                              { value: 'backend', label: 'Backend Engineering' },
+                              { value: 'devops', label: 'DevOps & Cloud' },
+                              { value: 'terminal', label: 'CLI & Terminal' },
+                              { value: 'academic', label: 'Academic & Writing' }
+                            ]
+                        ).map((cat) => {
                           const currentCats = (editingPost.type || 'linux').split(',').map(c => c.trim()).filter(Boolean);
                           const isChecked = currentCats.includes(cat.value);
                           return (
@@ -753,7 +758,11 @@ npm install
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
                   <span className="text-[10px] uppercase font-bold px-2 py-0.5 bg-gb-bg-light/40 border border-gb-bg-soft text-gb-fg-dark rounded-sm">
-                    {post.type || 'linux'}
+                    {(post.type || 'linux')
+                      .split(',')
+                      .map(c => c.trim())
+                      .map(c => categories?.find(cat => cat.id === c)?.name || c)
+                      .join(', ')}
                   </span>
                   <div className="flex gap-1">
                     {post.translations?.some(t => t.language === 'en' && t.title) && (

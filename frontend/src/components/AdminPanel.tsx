@@ -211,12 +211,12 @@ export function AdminPanel() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      fetchCategories(secret);
       if (activeTab === 'posts') fetchPosts(secret);
       else if (activeTab === 'comments') fetchComments(secret);
       else if (activeTab === 'products') fetchProducts(secret);
       else if (activeTab === 'feedback') fetchFeedbacks(secret);
       else if (activeTab === 'settings') fetchSettings(secret);
-      else if (activeTab === 'categories') fetchCategories(secret);
     }
   }, [isAuthenticated, activeTab]);
 
@@ -517,6 +517,7 @@ export function AdminPanel() {
                 setSuccessMessage={setSuccessMessage}
                 fetchPosts={fetchPosts}
                 allExistingTags={allExistingTags}
+                categories={categories}
               />
             )}
 
