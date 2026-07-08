@@ -405,7 +405,7 @@ pub async fn manual_auth(
     }
 
     // Check if user exists
-    let existing_user = sqlx::query_as::<_, User>("SELECT id, username, avatar_url, email FROM users WHERE email = ?")
+    let existing_user = sqlx::query_as::<_, User>("SELECT id, username, avatar_url, email, display_name, bio FROM users WHERE email = ?")
         .bind(&email_clean)
         .fetch_optional(&pool)
         .await
