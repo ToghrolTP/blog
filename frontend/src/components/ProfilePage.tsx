@@ -113,14 +113,14 @@ export function ProfilePage({
   const isRtl = language === 'fa';
 
   return (
-    <div className="animate-in fade-in duration-500 max-w-2xl mx-auto px-4 pb-16" dir={isRtl ? 'rtl' : 'ltr'}>
+    <div className="animate-in fade-in duration-500 max-w-3xl mx-auto px-4 pb-16" dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Page header */}
       <div className={`mb-8 font-mono text-gb-fg-dark border-gb-yellow-light py-1 ${isRtl ? 'border-r-2 pr-4' : 'border-l-2 pl-4'}`}>
         <p className="text-gb-fg text-lg font-bold">
           {isRtl ? 'مشخصات محیط کاری' : 'Workspace Profile'}{' '}
           <span className="text-gb-fg-dark font-normal">/sys/profile</span>
         </p>
-        <p className="mt-1 text-xs leading-relaxed">
+        <p className="mt-1 text-sm leading-relaxed">
           {isRtl 
             ? 'امضای برنامه‌نویس خود را سفارشی کنید، اعتبارنامه‌ها را مشاهده کنید و دارایی‌های ایستگاه کاری خود را بررسی کنید.'
             : 'Customize your developer signature, view credentials, and review your workstation assets.'}
@@ -129,14 +129,14 @@ export function ProfilePage({
 
       {/* Realtime committed notification */}
       {successMsg && (
-        <div className="mb-6 p-3 bg-gb-green-light/10 border border-gb-green-light text-gb-green-light font-mono text-xs rounded-none flex items-center justify-between animate-in fade-in slide-in-from-top-1">
+        <div className="mb-6 p-3 bg-gb-green-light/10 border border-gb-green-light text-gb-green-light font-mono text-sm rounded-none flex items-center justify-between animate-in fade-in slide-in-from-top-1">
           <span>✨ [SYS_LOG] {successMsg}</span>
           <button onClick={() => setSuccessMsg(null)} className="hover:opacity-75">✕</button>
         </div>
       )}
 
       {errorMsg && (
-        <div className="mb-6 p-3 bg-gb-red-light/10 border border-gb-red-light text-gb-red-light font-mono text-xs rounded-none flex items-center justify-between animate-in fade-in slide-in-from-top-1">
+        <div className="mb-6 p-3 bg-gb-red-light/10 border border-gb-red-light text-gb-red-light font-mono text-sm rounded-none flex items-center justify-between animate-in fade-in slide-in-from-top-1">
           <span>⚠️ [ERR_LOG] {errorMsg}</span>
           <button onClick={() => setErrorMsg(null)} className="hover:opacity-75">✕</button>
         </div>
@@ -233,15 +233,15 @@ export function ProfilePage({
         {/* Modular Profile Configurations Form with Hard Edges */}
         <div className="border-2 border-[#3c3836] bg-gb-bg p-6 sm:p-8 rounded-none shadow-[4px_4px_0px_#3c3836]">
           <div className="mb-6 border-b border-[#3c3836] pb-4 flex justify-between items-center">
-            <h3 className="font-mono font-bold text-xs text-gb-fg flex items-center gap-2">
+            <h3 className="font-mono font-bold text-sm text-gb-fg flex items-center gap-2">
               <span>⚙️</span> CONFIGURE_WORKSTATION_STATE
             </h3>
-            <span className="text-[10px] font-mono text-gb-fg-dark uppercase tracking-wider">
+            <span className="text-xs font-mono text-gb-fg-dark uppercase tracking-wider">
               {isRtl ? 'ورودی‌ها' : 'Form Inputs'}
             </span>
           </div>
 
-          <form onSubmit={handleSave} className="space-y-5 font-mono text-xs">
+          <form onSubmit={handleSave} className="space-y-5 font-mono text-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="block text-gb-fg-dark font-bold">
@@ -328,7 +328,7 @@ export function ProfilePage({
             </div>
 
             <div className="pt-4 border-t border-gb-bg-soft/40 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <span className="text-[9px] text-gb-fg-dark leading-relaxed order-2 sm:order-1">
+              <span className="text-xs text-gb-fg-dark leading-relaxed order-2 sm:order-1">
                 * Checksum: <code className="text-gb-aqua-light font-bold bg-gb-bg-soft px-1 rounded-none">{liveHash}</code>
               </span>
               <button
@@ -345,7 +345,7 @@ export function ProfilePage({
 
       {/* Bookmarked / Saved Articles List */}
       <div className="mb-10 border-t border-gb-bg-soft pt-8">
-        <h3 className="font-mono font-bold text-xs text-gb-fg mb-4 flex items-center gap-2">
+        <h3 className="font-mono font-bold text-sm text-gb-fg mb-4 flex items-center gap-2">
           <span>📁</span> SAVED_ARTICLES ({savedPosts.length})
         </h3>
 
@@ -362,12 +362,12 @@ export function ProfilePage({
                   className="border-2 border-gb-bg-soft bg-gb-bg hover:bg-gb-bg-soft/40 p-3.5 rounded-none cursor-pointer group transition-colors flex justify-between items-center gap-2"
                 >
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-bold text-sm text-gb-fg group-hover:text-gb-orange-light transition-colors line-clamp-1">
+                    <h4 className="font-bold text-base text-gb-fg group-hover:text-gb-orange-light transition-colors line-clamp-1">
                       {title}
                     </h4>
-                    <p className="text-xs text-gb-fg-dark line-clamp-1 mt-1">{summary}</p>
+                    <p className="text-sm text-gb-fg-dark line-clamp-1 mt-1">{summary}</p>
                   </div>
-                  <span className="text-xs text-gb-aqua-light shrink-0">
+                  <span className="text-sm text-gb-aqua-light shrink-0">
                     {isRtl ? 'مطالعه ➡️' : 'Read ➡️'}
                   </span>
                 </div>
@@ -375,7 +375,7 @@ export function ProfilePage({
             })}
           </div>
         ) : (
-          <div className="p-6 border-2 border-dashed border-gb-bg-soft rounded-none text-center text-gb-fg-dark font-mono text-xs bg-gb-bg-soft/5">
+          <div className="p-6 border-2 border-dashed border-gb-bg-soft rounded-none text-center text-gb-fg-dark font-mono text-sm bg-gb-bg-soft/5">
             {isRtl 
               ? 'هیچ مقاله‌ای نشانه‌گذاری نشده است. برای ذخیره کردن، وبلاگ را مرور کنید.'
               : 'No bookmarked articles. Go explore the blog to save some.'}
@@ -385,7 +385,7 @@ export function ProfilePage({
 
       {/* Licensed LaTeX Templates List */}
       <div className="border-t border-gb-bg-soft pt-8">
-        <h3 className="font-mono font-bold text-xs text-gb-fg mb-4 flex items-center gap-2">
+        <h3 className="font-mono font-bold text-sm text-gb-fg mb-4 flex items-center gap-2">
           <span>📦</span> LICENSED_TEMPLATES ({purchasedTemplates.length})
         </h3>
 
@@ -400,8 +400,8 @@ export function ProfilePage({
                   <div className="flex gap-3 items-center min-w-0">
                     <div className="text-2xl shrink-0">📄</div>
                     <div className="min-w-0">
-                      <h4 className="font-bold text-sm text-gb-fg truncate">{title}</h4>
-                      <p className="text-xs text-gb-fg-dark line-clamp-1 mt-0.5">{description}</p>
+                      <h4 className="font-bold text-base text-gb-fg truncate">{title}</h4>
+                      <p className="text-sm text-gb-fg-dark line-clamp-1 mt-0.5">{description}</p>
                     </div>
                   </div>
                   
@@ -410,7 +410,7 @@ export function ProfilePage({
                       e.preventDefault();
                       window.location.href = `/api/downloads/${tpl.id}`;
                     }}
-                    className="px-3 py-1.5 bg-[#282828] hover:bg-gb-green-light hover:text-[#282828] border-2 border-[#3c3836] rounded-none text-xs text-gb-fg transition-all shrink-0 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                    className="px-3 py-1.5 bg-[#282828] hover:bg-gb-green-light hover:text-[#282828] border-2 border-[#3c3836] rounded-none text-sm text-gb-fg transition-all shrink-0 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
                   >
                     <span>📥</span> {isRtl ? 'دانلود سورس' : 'Download Source'}
                   </button>
@@ -419,11 +419,11 @@ export function ProfilePage({
             })}
           </div>
         ) : (
-          <div className="p-6 border-2 border-dashed border-gb-bg-soft rounded-none text-center text-gb-fg-dark font-mono text-xs bg-gb-bg-soft/5">
+          <div className="p-6 border-2 border-dashed border-gb-bg-soft rounded-none text-center text-gb-fg-dark font-mono text-sm bg-gb-bg-soft/5">
             <p className="mb-3">{isRtl ? 'هیچ محصول یا قالبی تهیه نکرده‌اید.' : 'No acquired templates.'}</p>
             <button
               onClick={onNavigateToStore}
-              className="px-3 py-1.5 bg-[#282828] border-2 border-gb-yellow-light text-gb-yellow-light hover:bg-gb-yellow-light hover:text-[#282828] transition-colors font-bold rounded-none text-xs cursor-pointer"
+              className="px-3 py-1.5 bg-[#282828] border-2 border-gb-yellow-light text-gb-yellow-light hover:bg-gb-yellow-light hover:text-[#282828] transition-colors font-bold rounded-none text-sm cursor-pointer"
             >
               {isRtl ? 'مشاهده فروشگاه قالب‌ها' : 'Browse Template Store'}
             </button>
