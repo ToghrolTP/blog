@@ -3,6 +3,7 @@ mod models;
 mod auth;
 mod comments;
 mod upvotes;
+mod saves;
 mod upload;
 mod products;
 mod payments;
@@ -90,6 +91,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/user/upvotes", get(upvotes::get_user_upvotes))
         .route("/api/posts/{id}/upvote", post(upvotes::toggle_post_upvote))
         .route("/api/comments/{id}/upvote", post(upvotes::toggle_comment_upvote))
+        .route("/api/user/saved-posts", get(saves::get_user_saves))
+        .route("/api/posts/{id}/save", post(saves::toggle_save_post))
         .route("/api/upload", post(upload::upload_image))
         .route("/api/settings", get(handlers::get_settings).put(handlers::update_setting))
         .route("/api/feedbacks", post(handlers::submit_feedback))

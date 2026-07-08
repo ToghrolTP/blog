@@ -319,6 +319,20 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>
     .execute(pool)
     .await?;
 
+    sqlx::query(
+        r#"
+        CREATE TABLE IF NOT EXISTS saved_posts (
+            post_id TEXT NOT NULL,
+            user_id INTEGER NOT NULL,
+            PRIMARY KEY (post_id, user_id),
+            FOREIGN KEY (post_id) REFERENCES posts(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )
+        "#
+    )
+    .execute(pool)
+    .await?;
+
     // Seed categories if empty
     let cat_count: (i64,) = sqlx::query_as("SELECT count(*) FROM categories")
         .fetch_one(pool)

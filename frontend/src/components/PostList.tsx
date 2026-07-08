@@ -1,11 +1,12 @@
 import { Post } from '../types';
-import { CalendarBlankIcon, ClockIcon, ArrowRightIcon, ArrowUpIcon, BotIcon } from './Icons';
+import { CalendarBlankIcon, ClockIcon, ArrowRightIcon, ArrowUpIcon, BotIcon, BookmarkIcon } from './Icons';
 import { Card } from './ui/Card';
 import { Badge } from './ui/Badge';
 import { useNavigate } from 'react-router-dom';
 import { useUpvotes } from '../contexts/UpvoteContext';
 import { useState, ReactNode } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PostListProps {
   posts: Post[];
@@ -17,11 +18,33 @@ export function PostList({ posts }: PostListProps) {
   const [localUpvoteCounts, setLocalUpvoteCounts] = useState<Record<string, number>>({});
   const { language, t } = useLanguage();
 
+  const { user, login } = useAuth();
+
   const handleUpvote = async (e: React.MouseEvent, postId: string) => {
     e.stopPropagation();
+    if (!user) {
+      login();
+      return;
+    }
     const result = await togglePostUpvote(postId);
     if (result) {
       setLocalUpvoteCounts(prev => ({ ...prev, [postId]: result.upvotes }));
+    }
+  };
+
+  const handleSavePost = async (e: React.MouseEvent, postId: string) => {
+    e.stopPropagation();
+    if (!user) {
+      login();
+      return;
+    }
+    try {
+      const res = await fetch(`/api/posts/${postId}/save`, { method: 'POST' });
+      if (res.ok) {
+        window.dispatchEvent(new Event('auth-change'));
+      }
+    } catch (err) {
+      console.error("Failed to save post", err);
     }
   };
 
@@ -66,6 +89,17 @@ export function PostList({ posts }: PostListProps) {
             >
               <ArrowUpIcon size={16} />
               <span>{displayUpvotes}</span>
+            </div>
+            <div 
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded cursor-pointer transition-colors ${
+                user && (user.savedPostIds || []).includes(post.id) 
+                  ? 'bg-gb-green-light/20 text-gb-green-light hover:bg-gb-green-light/30' 
+                  : 'hover:bg-gb-bg-soft text-gb-fg-dark'
+              }`}
+              onClick={(e) => handleSavePost(e, post.id)}
+              title={user && (user.savedPostIds || []).includes(post.id) ? "Saved" : "Save Article"}
+            >
+              <BookmarkIcon size={16} className={user && (user.savedPostIds || []).includes(post.id) ? "fill-current" : ""} />
             </div>
           </div>
           

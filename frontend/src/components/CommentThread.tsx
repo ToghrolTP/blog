@@ -5,6 +5,7 @@ import { Button } from './ui/Button';
 import { Textarea } from './ui/Textarea';
 import { useUpvotes } from '../contexts/UpvoteContext';
 import { ArrowUpIcon } from './Icons';
+import { useAuth } from '../contexts/AuthContext';
 
 interface CommentThreadProps {
   comment: Comment;
@@ -20,10 +21,11 @@ export function CommentThread({ comment, postId, user, onReply }: CommentThreadP
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { upvotes: userUpvotes, toggleCommentUpvote } = useUpvotes();
   const [localUpvotes, setLocalUpvotes] = useState<number | null>(null);
+  const { login } = useAuth();
 
   const handleUpvote = async () => {
     if (!user) {
-      alert("Please login to upvote");
+      login();
       return;
     }
     const result = await toggleCommentUpvote(comment.id);
@@ -78,33 +80,30 @@ export function CommentThread({ comment, postId, user, onReply }: CommentThreadP
         </div>
 
         <div className="flex items-center gap-4 mt-2">
-          {user && (
-            <>
-              <button 
-                className={`flex items-center gap-1.5 transition-colors text-xs font-mono ${
-                  userUpvotes.comments.includes(comment.id) 
-                    ? 'text-gb-orange-light hover:text-gb-orange' 
-                    : 'text-gb-fg-dark hover:text-gb-fg'
-                }`}
-                onClick={handleUpvote}
-              >
-                <ArrowUpIcon size={14} />
-                <span>{displayUpvotes}</span>
-              </button>
-              <button 
-                onClick={() => { setIsReplying(!isReplying); setIsPreviewMode(false); }}
-                className="text-gb-fg-dark hover:text-gb-aqua-light text-xs font-mono transition-colors"
-              >
-                {isReplying ? 'Cancel' : 'Reply'}
-              </button>
-            </>
-          )}
-          {!user && displayUpvotes > 0 && (
-            <div className="flex items-center gap-1.5 text-xs text-gb-fg-dark font-mono">
-              <ArrowUpIcon size={14} />
-              <span>{displayUpvotes}</span>
-            </div>
-          )}
+          <button 
+            className={`flex items-center gap-1.5 transition-colors text-xs font-mono ${
+              user && userUpvotes.comments.includes(comment.id) 
+                ? 'text-gb-orange-light hover:text-gb-orange' 
+                : 'text-gb-fg-dark hover:text-gb-fg'
+            }`}
+            onClick={handleUpvote}
+          >
+            <ArrowUpIcon size={14} />
+            <span>{displayUpvotes}</span>
+          </button>
+          <button 
+            onClick={() => {
+              if (!user) {
+                login();
+              } else {
+                setIsReplying(!isReplying);
+                setIsPreviewMode(false);
+              }
+            }}
+            className="text-gb-fg-dark hover:text-gb-aqua-light text-xs font-mono transition-colors"
+          >
+            {isReplying ? 'Cancel' : 'Reply'}
+          </button>
         </div>
 
         {isReplying && (

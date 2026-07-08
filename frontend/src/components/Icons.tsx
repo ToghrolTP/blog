@@ -2,6 +2,16 @@ import { SVGProps } from 'react';
 
 import terminalWindowSvg from '../assets/icons/terminal-window.svg?raw';
 import githubLogoSvg from '../assets/icons/github-logo.svg?raw';
+
+import userSvg from '../../phosphoricon/icons/user.svg?raw';
+import eyeSvg from '../../phosphoricon/icons/eye.svg?raw';
+import eyeSlashSvg from '../../phosphoricon/icons/eye-slash.svg?raw';
+import floppyDiskSvg from '../../phosphoricon/icons/floppy-disk.svg?raw';
+import packageSvg from '../../phosphoricon/icons/package.svg?raw';
+import downloadSvg from '../../phosphoricon/icons/download.svg?raw';
+import sparkleSvg from '../../phosphoricon/icons/sparkle.svg?raw';
+import warningSvg from '../../phosphoricon/icons/warning.svg?raw';
+import bookmarkSvg from '../../phosphoricon/icons/bookmark.svg?raw';
 import twitterLogoSvg from '../assets/icons/twitter-logo.svg?raw';
 import envelopeSimpleSvg from '../assets/icons/envelope-simple.svg?raw';
 import calendarBlankSvg from '../assets/icons/calendar-blank.svg?raw';
@@ -96,3 +106,13 @@ export const CaretRightIcon = createIcon(caretRightSvg);
 export const CaretDownIcon = createIcon(caretDownSvg);
 export const FolderIcon = createIcon(folderSvg);
 export const FolderOpenIcon = createIcon(folderOpenSvg);
+
+export const UserIcon = createIcon(userSvg);
+export const EyeIcon = createIcon(eyeSvg);
+export const EyeSlashIcon = createIcon(eyeSlashSvg);
+export const FloppyDiskIcon = createIcon(floppyDiskSvg);
+export const PackageIcon = createIcon(packageSvg);
+export const DownloadIcon = createIcon(downloadSvg);
+export const SparkleIcon = createIcon(sparkleSvg);
+export const WarningIcon = createIcon(warningSvg);
+export const BookmarkIcon = createIcon(bookmarkSvg);

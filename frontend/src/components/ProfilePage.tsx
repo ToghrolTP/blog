@@ -1,6 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { User, Post, Product } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import {
+  UserIcon,
+  CheckIcon,
+  SettingsIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  FloppyDiskIcon,
+  FolderIcon,
+  ArrowRightIcon,
+  PackageIcon,
+  FileTextIcon,
+  DownloadIcon,
+  SparkleIcon,
+  WarningIcon
+} from './Icons';
 
 interface ProfilePageProps {
   profile: User;
@@ -130,14 +145,14 @@ export function ProfilePage({
       {/* Realtime committed notification */}
       {successMsg && (
         <div className="mb-6 p-3 bg-gb-green-light/10 border border-gb-green-light text-gb-green-light font-mono text-sm rounded-none flex items-center justify-between animate-in fade-in slide-in-from-top-1">
-          <span>✨ [SYS_LOG] {successMsg}</span>
+          <span className="flex items-center gap-1.5"><SparkleIcon className="w-4 h-4 text-gb-green-light animate-pulse" /> [SYS_LOG] {successMsg}</span>
           <button onClick={() => setSuccessMsg(null)} className="hover:opacity-75">✕</button>
         </div>
       )}
 
       {errorMsg && (
         <div className="mb-6 p-3 bg-gb-red-light/10 border border-gb-red-light text-gb-red-light font-mono text-sm rounded-none flex items-center justify-between animate-in fade-in slide-in-from-top-1">
-          <span>⚠️ [ERR_LOG] {errorMsg}</span>
+          <span className="flex items-center gap-1.5"><WarningIcon className="w-4 h-4 text-gb-red-light animate-shake" /> [ERR_LOG] {errorMsg}</span>
           <button onClick={() => setErrorMsg(null)} className="hover:opacity-75">✕</button>
         </div>
       )}
@@ -178,14 +193,14 @@ export function ProfilePage({
                   {profile.avatar_url ? (
                     <img src={profile.avatar_url} alt={username} className="w-full h-full object-cover rounded-none" />
                   ) : (
-                    <span className="select-none">👨‍💻</span>
+                    <UserIcon className="w-8 h-8 text-[#b8bb26]" />
                   )}
                 </div>
 
                 <div className="space-y-0.5">
                   <h3 className="font-mono font-black text-[#fbf1c7] text-sm tracking-tight leading-snug flex items-center justify-center md:justify-start gap-1">
                     {displayName || 'Anonymous'}
-                    <span className="text-[#fabd2f] text-xs">✔️</span>
+                    <CheckIcon className="w-3.5 h-3.5 text-[#fabd2f]" />
                   </h3>
                   <p className="text-xs font-mono text-[#a89984]" dir="ltr">
                     @{username || 'operator'}
@@ -234,7 +249,7 @@ export function ProfilePage({
         <div className="border-2 border-[#3c3836] bg-gb-bg p-6 sm:p-8 rounded-none shadow-[4px_4px_0px_#3c3836]">
           <div className="mb-6 border-b border-[#3c3836] pb-4 flex justify-between items-center">
             <h3 className="font-mono font-bold text-sm text-gb-fg flex items-center gap-2">
-              <span>⚙️</span> CONFIGURE_WORKSTATION_STATE
+              <SettingsIcon className="w-4 h-4 text-gb-fg-dark shrink-0" /> CONFIGURE_WORKSTATION_STATE
             </h3>
             <span className="text-xs font-mono text-gb-fg-dark uppercase tracking-wider">
               {isRtl ? 'ورودی‌ها' : 'Form Inputs'}
@@ -308,7 +323,7 @@ export function ProfilePage({
                     className={`absolute top-3 hover:text-gb-yellow-light text-gb-fg-dark focus:outline-none ${isRtl ? 'left-3' : 'right-3'}`}
                     title={showPassword ? 'Hide value' : 'Show value'}
                   >
-                    {showPassword ? '👁️' : '🕶️'}
+                    {showPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
@@ -336,7 +351,7 @@ export function ProfilePage({
                 disabled={saving}
                 className="px-5 py-2.5 bg-[#282828] border-2 border-gb-green-light text-gb-green-light hover:bg-gb-green-light hover:text-[#282828] font-bold rounded-none shadow-[2px_2px_0px_rgba(184,187,38,0.4)] transition-all flex items-center gap-1.5 cursor-pointer order-1 sm:order-2 disabled:opacity-50"
               >
-                <span>💾</span> {saving ? (isRtl ? 'در حال ثبت...' : 'Committing...') : (isRtl ? 'ثبت تغییرات وضعیت' : 'Commit State Changes')}
+                <FloppyDiskIcon className="w-4 h-4" /> {saving ? (isRtl ? 'در حال ثبت...' : 'Committing...') : (isRtl ? 'ثبت تغییرات وضعیت' : 'Commit State Changes')}
               </button>
             </div>
           </form>
@@ -346,7 +361,7 @@ export function ProfilePage({
       {/* Bookmarked / Saved Articles List */}
       <div className="mb-10 border-t border-gb-bg-soft pt-8">
         <h3 className="font-mono font-bold text-sm text-gb-fg mb-4 flex items-center gap-2">
-          <span>📁</span> SAVED_ARTICLES ({savedPosts.length})
+          <FolderIcon className="w-4 h-4 text-gb-fg-dark shrink-0" /> SAVED_ARTICLES ({savedPosts.length})
         </h3>
 
         {savedPosts.length > 0 ? (
@@ -368,7 +383,7 @@ export function ProfilePage({
                     <p className="text-sm text-gb-fg-dark line-clamp-1 mt-1">{summary}</p>
                   </div>
                   <span className="text-sm text-gb-aqua-light shrink-0">
-                    {isRtl ? 'مطالعه ➡️' : 'Read ➡️'}
+                    <span className="flex items-center gap-1">{isRtl ? 'مطالعه' : 'Read'} <ArrowRightIcon className="w-3.5 h-3.5" /></span>
                   </span>
                 </div>
               );
@@ -386,7 +401,7 @@ export function ProfilePage({
       {/* Licensed LaTeX Templates List */}
       <div className="border-t border-gb-bg-soft pt-8">
         <h3 className="font-mono font-bold text-sm text-gb-fg mb-4 flex items-center gap-2">
-          <span>📦</span> LICENSED_TEMPLATES ({purchasedTemplates.length})
+          <PackageIcon className="w-4 h-4 text-gb-fg-dark shrink-0" /> LICENSED_TEMPLATES ({purchasedTemplates.length})
         </h3>
 
         {purchasedTemplates.length > 0 ? (
@@ -398,7 +413,7 @@ export function ProfilePage({
               return (
                 <div key={tpl.id} className="border-2 border-gb-bg-soft bg-gb-bg p-4 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex gap-3 items-center min-w-0">
-                    <div className="text-2xl shrink-0">📄</div>
+                    <FileTextIcon className="w-8 h-8 text-gb-fg-dark shrink-0" />
                     <div className="min-w-0">
                       <h4 className="font-bold text-base text-gb-fg truncate">{title}</h4>
                       <p className="text-sm text-gb-fg-dark line-clamp-1 mt-0.5">{description}</p>
@@ -412,7 +427,7 @@ export function ProfilePage({
                     }}
                     className="px-3 py-1.5 bg-[#282828] hover:bg-gb-green-light hover:text-[#282828] border-2 border-[#3c3836] rounded-none text-sm text-gb-fg transition-all shrink-0 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
                   >
-                    <span>📥</span> {isRtl ? 'دانلود سورس' : 'Download Source'}
+                    <DownloadIcon className="w-4 h-4" /> {isRtl ? 'دانلود سورس' : 'Download Source'}
                   </button>
                 </div>
               );

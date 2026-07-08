@@ -7,8 +7,9 @@ import { Badge } from "./ui/Badge";
 import { Comments } from "./Comments";
 const MarkdownRenderer = lazy(() => import("./MarkdownRenderer").then(m => ({ default: m.MarkdownRenderer })));
 import { useUpvotes } from "../contexts/UpvoteContext";
-import { ArrowUpIcon, BotIcon, WrenchIcon } from "./Icons";
+import { ArrowUpIcon, BotIcon, WrenchIcon, BookmarkIcon } from "./Icons";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useAuth } from "../contexts/AuthContext";
 import { SEO } from "./SEO";
 
 export function PostDetail() {
@@ -21,14 +22,36 @@ export function PostDetail() {
   const { language, t } = useLanguage();
   const hasUpvoted = post ? userUpvotes.posts.includes(post.id) : false;
 
+  const { user, login } = useAuth();
+
   const handleUpvote = async () => {
+    if (!user) {
+      login();
+      return;
+    }
     if (!post) return;
     const result = await togglePostUpvote(post.id);
     if (result) {
       setPost({ ...post, upvotes: result.upvotes });
     }
   };
+  const isSaved = post && user ? (user.savedPostIds || []).includes(post.id) : false;
 
+  const handleSavePost = async () => {
+    if (!user) {
+      login();
+      return;
+    }
+    if (!post) return;
+    try {
+      const res = await fetch(`/api/posts/${post.id}/save`, { method: 'POST' });
+      if (res.ok) {
+        window.dispatchEvent(new Event('auth-change'));
+      }
+    } catch (err) {
+      console.error("Failed to save post", err);
+    }
+  };
   useEffect(() => {
     if (!id) return;
     const adminSecret = localStorage.getItem("adminSecret");
@@ -283,6 +306,18 @@ export function PostDetail() {
           >
             <ArrowUpIcon size={16} />
             <span>{post.upvotes}</span>
+          </div>
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1.5 border-2 rounded transition-all duration-300 font-mono text-xs cursor-pointer select-none focus:outline-none focus:ring-2 focus:ring-gb-green-light focus:ring-offset-2 focus:ring-offset-gb-bg ${
+              isSaved
+                ? "bg-gb-green-light text-gb-bg border-gb-green-light shadow-[0_0_10px_rgba(184,187,38,0.25)] font-bold"
+                : "bg-gb-bg-soft/10 text-gb-fg border-gb-bg-soft/60 hover:border-gb-green-light/40 hover:bg-gb-bg-soft/20"
+            }`}
+            onClick={handleSavePost}
+            title={isSaved ? "Saved" : "Save Article"}
+          >
+            <BookmarkIcon size={16} className={isSaved ? "fill-current" : ""} />
+            <span>{isSaved ? (language === 'fa' ? 'ذخیره شده' : 'Saved') : (language === 'fa' ? 'ذخیره' : 'Save')}</span>
           </div>
           <div className="flex items-center gap-2">
             <TagIcon className="opacity-80 text-lg" />

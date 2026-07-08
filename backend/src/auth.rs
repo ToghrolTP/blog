@@ -173,7 +173,7 @@ pub async fn get_me(
         .await
         .map_err(|_| (StatusCode::NOT_FOUND, "User not found".to_string()))?;
 
-    let saved_posts: Vec<String> = sqlx::query_scalar("SELECT post_id FROM post_upvotes WHERE user_id = ?")
+    let saved_posts: Vec<String> = sqlx::query_scalar("SELECT post_id FROM saved_posts WHERE user_id = ?")
         .bind(user_id)
         .fetch_all(&pool)
         .await
@@ -279,7 +279,7 @@ pub async fn update_profile(
         .await
         .map_err(|_| (StatusCode::NOT_FOUND, "User not found".to_string()))?;
 
-    let saved_posts: Vec<String> = sqlx::query_scalar("SELECT post_id FROM post_upvotes WHERE user_id = ?")
+    let saved_posts: Vec<String> = sqlx::query_scalar("SELECT post_id FROM saved_posts WHERE user_id = ?")
         .bind(user_id)
         .fetch_all(&pool)
         .await
