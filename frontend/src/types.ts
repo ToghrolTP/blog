@@ -22,6 +22,10 @@ export interface User {
   username: string;
   avatar_url: string;
   email?: string;
+  displayName?: string;
+  bio?: string;
+  savedPostIds: string[];
+  purchasedTemplateIds: string[];
 }
 
 

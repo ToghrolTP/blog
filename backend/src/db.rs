@@ -244,6 +244,14 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>
         .execute(pool)
         .await;
         
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN display_name TEXT")
+        .execute(pool)
+        .await;
+
+    let _ = sqlx::query("ALTER TABLE users ADD COLUMN bio TEXT")
+        .execute(pool)
+        .await;
+        
     // Perform data migration from old posts structure to new
     let legacy_rows = sqlx::query_as::<_, (String, String, String, String, i64)>("SELECT id, title, summary, content, read_time FROM posts WHERE title IS NOT NULL")
         .fetch_all(pool)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { flushSync } from 'react-dom';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { SearchIcon, XIcon, SlidersHorizontalIcon, WrenchIcon } from './components/Icons';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
@@ -11,10 +11,11 @@ const Store = lazy(() => import('./components/Store').then(m => ({ default: m.St
 const ProductDetail = lazy(() => import('./components/ProductDetail').then(m => ({ default: m.ProductDetail })));
 const CheckoutVerify = lazy(() => import('./components/CheckoutVerify').then(m => ({ default: m.CheckoutVerify })));
 const About = lazy(() => import('./components/About').then(m => ({ default: m.About })));
+const ProfilePage = lazy(() => import('./components/ProfilePage').then(m => ({ default: m.ProfilePage })));
 import { TerminalWindowIcon } from './components/Icons';
 import { Post, Category } from './types';
 import { UpvoteProvider } from './contexts/UpvoteContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { SEO } from './components/SEO';
 import { Button } from './components/ui/Button';
@@ -599,6 +600,37 @@ function Home() {
   );
 }
 
+const ProfilePageWrapper = () => {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+  const { language } = useLanguage();
+  
+  if (loading) {
+    return (
+      <div className="text-center font-mono text-gb-fg-dark py-12 animate-pulse">
+        {language === 'fa' ? 'در حال بارگذاری نمایه امن...' : 'Mounting secure profile...'}
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to={language === 'fa' ? '/fa' : '/'} replace />;
+  }
+  
+  const handleUpdateProfile = () => {
+    window.dispatchEvent(new Event('auth-change'));
+  };
+  
+  return (
+    <ProfilePage
+      profile={user}
+      onUpdateProfile={handleUpdateProfile}
+      onSelectPost={(id) => navigate(language === 'fa' ? `/fa/post/${id}` : `/post/${id}`)}
+      onNavigateToStore={() => navigate(language === 'fa' ? '/fa/store' : '/store')}
+    />
+  );
+};
+
 function AppContent() {
   const location = useLocation();
   const [isSiteMaintenance, setIsSiteMaintenance] = useState(false);
@@ -669,6 +701,8 @@ function AppContent() {
                     <Route path="/fa/store/checkout/verify" element={<CheckoutVerify />} />
                     <Route path="/fa/post/:id" element={<PostDetail />} />
                     <Route path="/fa/about" element={<About />} />
+                    <Route path="/profile" element={<ProfilePageWrapper />} />
+                    <Route path="/fa/profile" element={<ProfilePageWrapper />} />
                     <Route path="/admin" element={<AdminPanel />} />
                   </Routes>
                 </Suspense>

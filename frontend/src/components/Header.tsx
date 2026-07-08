@@ -84,9 +84,9 @@ export function Header() {
 
           {user ? (
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2" title={user.username}>
+              <Link to={language === 'fa' ? '/fa/profile' : '/profile'} className="flex items-center gap-2 hover:opacity-85 transition-opacity" title={user.username}>
                 <img src={user.avatar_url} alt={user.username} className="w-6 h-6 rounded-full border border-gb-fg-dark/30" />
-              </div>
+              </Link>
               <Button variant="ghost" size="sm" onClick={logout} className="text-xs font-mono text-gb-fg-dark hover:text-gb-orange-light">
                 {t('logout')}
               </Button>

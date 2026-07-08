@@ -39,6 +39,8 @@ pub async fn get_comments(
                 username: c.username,
                 avatar_url: c.avatar_url,
                 email: c.email,
+                display_name: None,
+                bio: None,
             },
             upvotes: c.upvotes as i32,
         })
@@ -129,6 +131,8 @@ pub async fn get_all_comments_admin(
                 username: c.username,
                 avatar_url: c.avatar_url,
                 email: c.email,
+                display_name: None,
+                bio: None,
             },
             upvotes: c.upvotes as i32,
         })

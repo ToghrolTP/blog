@@ -92,6 +92,8 @@ pub struct User {
     pub username: String,
     pub avatar_url: String,
     pub email: Option<String>,
+    pub display_name: Option<String>,
+    pub bio: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, FromRow)]
