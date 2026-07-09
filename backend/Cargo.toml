@@ -2,6 +2,7 @@
 name = "backend"
 version = "0.1.0"
 edition = "2024"
+default-run = "backend"
 
 [dependencies]
 axum = { version = "0.8.9", features = ["multipart"] }
@@ -22,3 +23,5 @@ bcrypt = "0.15"
 dicebear-core = "10.3.0"
 dicebear-styles = { version = "10.2.0", features = ["glyphs"] }
 pulldown-cmark = "0.13.4"
+image = { version = "0.25", default-features = false, features = ["webp", "jpeg", "png"] }
+webp = "0.3"

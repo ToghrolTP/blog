@@ -4,6 +4,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { BugIcon } from './Icons';
 import { Button } from './ui/Button';
 import { Textarea } from './ui/Textarea';
+import { useSettings } from '../contexts/SettingsContext';
 
 export function FeedbackButton() {
   const location = useLocation();
@@ -15,32 +16,26 @@ export function FeedbackButton() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+  const { settings } = useSettings();
 
-  // Fetch settings to check enable status and allowed paths
+  // Check enable status and allowed paths using global settings
   useEffect(() => {
-    fetch('/api/settings')
-      .then((res) => {
-        if (!res.ok) throw new Error();
-        return res.json();
-      })
-      .then((data) => {
-        const enabled = data.feedback_enabled !== false; // Default true if key not set
-        setIsEnabled(enabled);
+    if (settings) {
+      const enabled = settings.feedback_enabled !== false; // Default true if key not set
+      setIsEnabled(enabled);
 
-        const allowed = data.feedback_allowed_paths || '*';
-        if (allowed === '*' || allowed.trim() === '') {
-          setIsAllowedPath(true);
-        } else {
-          const paths = allowed.split(',').map((p: string) => p.trim());
-          const matched = paths.some((p: string) => p && location.pathname.startsWith(p));
-          setIsAllowedPath(matched);
-        }
-      })
-      .catch(() => {
-        // Fallback: disable if setting check fails to be safe
-        setIsEnabled(false);
-      });
-  }, [location.pathname]);
+      const allowed = settings.feedback_allowed_paths || '*';
+      if (allowed === '*' || allowed.trim() === '') {
+        setIsAllowedPath(true);
+      } else {
+        const paths = allowed.split(',').map((p: string) => p.trim());
+        const matched = paths.some((p: string) => p && location.pathname.startsWith(p));
+        setIsAllowedPath(matched);
+      }
+    } else {
+      setIsEnabled(false);
+    }
+  }, [settings, location.pathname]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

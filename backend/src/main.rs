@@ -151,7 +151,7 @@ async fn cache_header_middleware(req: axum::http::Request<axum::body::Body>, nex
     } else if path.starts_with("/uploads/") {
         res.headers_mut().insert(
             axum::http::header::CACHE_CONTROL,
-            axum::http::HeaderValue::from_static("public, max-age=604800"),
+            axum::http::HeaderValue::from_static("public, max-age=31536000, immutable"),
         );
     }
     res

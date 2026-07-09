@@ -4,26 +4,27 @@ import { TerminalWindowIcon, GithubLogoIcon, TwitterLogoIcon, EnvelopeSimpleIcon
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from './ui/Button';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useSettings } from '../contexts/SettingsContext';
 
 export function Header() {
   const { user, login, logout } = useAuth();
   const { language, toggleLanguage, t } = useLanguage();
   const [showStoreLink, setShowStoreLink] = useState(true);
+  const { settings } = useSettings();
 
   useEffect(() => {
     const adminSecret = localStorage.getItem('adminSecret');
     const isParamAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isAdmin = !!adminSecret || isParamAdmin;
 
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((data) => {
-        if ((data.store_maintenance || data.site_maintenance) && !isAdmin) {
-          setShowStoreLink(false);
-        }
-      })
-      .catch((err) => console.error("Error fetching settings:", err));
-  }, []);
+    if (settings) {
+      if ((settings.store_maintenance || settings.site_maintenance) && !isAdmin) {
+        setShowStoreLink(false);
+      } else {
+        setShowStoreLink(true);
+      }
+    }
+  }, [settings]);
   
   return (
     <header className="border-b border-gb-bg-soft py-3 mt-2 md:py-6 md:mt-4">

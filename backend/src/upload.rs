@@ -24,17 +24,25 @@ pub async fn upload_image(mut multipart: Multipart) -> Result<impl IntoResponse,
     while let Some(field) = multipart.next_field().await.unwrap_or(None) {
         let name = field.name().unwrap_or("").to_string();
         if name == "image" || name == "file" {
-            let file_name = field.file_name().unwrap_or("image.png").to_string();
-            let ext = Path::new(&file_name)
-                .extension()
-                .and_then(|e| e.to_str())
-                .unwrap_or("png");
-                
-            let new_filename = format!("{}.{}", Uuid::new_v4(), ext);
+            let data = field.bytes().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+
+            let img = image::load_from_memory(&data)
+                .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid image format: {}", e)))?;
+
+            let img = if img.width() > 1000 {
+                img.resize(1000, 1000, image::imageops::FilterType::Lanczos3)
+            } else {
+                img
+            };
+
+            let encoder = webp::Encoder::from_image(&img)
+                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Failed to create WebP encoder".to_string()))?;
+            let webp_data = encoder.encode(75.0);
+
+            let new_filename = format!("{}.webp", Uuid::new_v4());
             let filepath = uploads_dir.join(&new_filename);
 
-            let data = field.bytes().await.map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-            fs::write(&filepath, data).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write file: {}", e)))?;
+            fs::write(&filepath, &*webp_data).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write file: {}", e)))?;
 
             let response = UploadResponse {
                 url: format!("/uploads/{}", new_filename),

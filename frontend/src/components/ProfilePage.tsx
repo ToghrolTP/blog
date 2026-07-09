@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { User, Post, Product } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { Card } from './ui/Card';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { Textarea } from './ui/Textarea';
 import {
   UserIcon,
   CheckIcon,
@@ -128,17 +132,17 @@ export function ProfilePage({
   const isRtl = language === 'fa';
 
   return (
-    <div className="animate-in fade-in duration-500 max-w-3xl mx-auto px-4 pb-16" dir={isRtl ? 'rtl' : 'ltr'}>
+    <div className="animate-in fade-in duration-500 max-w-5xl mx-auto px-4 pb-16" dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Page header */}
       <div className={`mb-8 font-mono text-gb-fg-dark border-gb-yellow-light py-1 ${isRtl ? 'border-r-2 pr-4' : 'border-l-2 pl-4'}`}>
         <p className="text-gb-fg text-lg font-bold">
-          {isRtl ? 'مشخصات محیط کاری' : 'Workspace Profile'}{' '}
+          {isRtl ? 'پروفایل' : 'Profile'}{' '}
           <span className="text-gb-fg-dark font-normal">/sys/profile</span>
         </p>
         <p className="mt-1 text-sm leading-relaxed">
           {isRtl 
-            ? 'امضای برنامه‌نویس خود را سفارشی کنید، اعتبارنامه‌ها را مشاهده کنید و دارایی‌های ایستگاه کاری خود را بررسی کنید.'
-            : 'Customize your developer signature, view credentials, and review your workstation assets.'}
+            ? 'نماد برنامه نویسیتون رو شخصی‌سازی کنید، مشخصات حسابتون رو تغییر بدید و دارایی‌هاتون رو مدیریت کنید'
+            : 'Customize your developer signature, view credentials, and review your assets.'}
         </p>
       </div>
 
@@ -177,7 +181,7 @@ export function ProfilePage({
                 <span className="text-[#fb4934]">■</span>
                 <span className="text-[#fabd2f]">■</span>
                 <span className="text-[#b8bb26]">■</span>
-                <span className="text-[#ebdbb2] ml-1 uppercase">OPERATOR_SIGNATURE</span>
+                <span className="text-[#ebdbb2] ml-1 uppercase">USER_SIGNATURE</span>
               </div>
               <span className="text-[#8ec07c]">OK.SYS</span>
             </div>
@@ -235,10 +239,10 @@ export function ProfilePage({
             {/* BIO Section */}
             <div className="mt-5 pt-4 border-t border-[#504945] font-mono text-xs">
               <div className="text-[9px] uppercase tracking-wider text-[#a89984] font-bold mb-1.5">
-                {isRtl ? 'گزارش بیوگرافی اپراتور' : 'Operator bio log'}
+                {isRtl ? 'گزارش بیوگرافی اپراتور' : 'User bio log'}
               </div>
               <p className="text-[#ebdbb2] bg-[#1d2021] p-3 rounded-none border border-[#3c3836] leading-relaxed min-h-[52px] whitespace-pre-wrap">
-                {bio || (isRtl ? 'اپراتور فعال بدون یادداشت ثبت‌شده.' : 'Active operator with no custom profile log entry.')}
+                {bio || (isRtl ? 'اپراتور فعال بدون یادداشت ثبت‌شده.' : 'Active user with no custom profile log entry.')}
               </p>
             </div>
 
@@ -249,7 +253,7 @@ export function ProfilePage({
         <div className="border-2 border-[#3c3836] bg-gb-bg p-6 sm:p-8 rounded-none shadow-[4px_4px_0px_#3c3836]">
           <div className="mb-6 border-b border-[#3c3836] pb-4 flex justify-between items-center">
             <h3 className="font-mono font-bold text-sm text-gb-fg flex items-center gap-2">
-              <SettingsIcon className="w-4 h-4 text-gb-fg-dark shrink-0" /> CONFIGURE_WORKSTATION_STATE
+              <SettingsIcon className="w-4 h-4 text-gb-fg-dark shrink-0" /> CONFIGURE_PROFILE_STATE
             </h3>
             <span className="text-xs font-mono text-gb-fg-dark uppercase tracking-wider">
               {isRtl ? 'ورودی‌ها' : 'Form Inputs'}
@@ -262,12 +266,11 @@ export function ProfilePage({
                 <label className="block text-gb-fg-dark font-bold">
                   {isRtl ? 'نام نمایشی' : 'Display Name'}
                 </label>
-                <input
+                <Input
                   type="text"
                   required
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full bg-gb-bg-soft border-2 border-gb-bg-light focus:border-gb-yellow-light focus:outline-none p-2.5 rounded-none text-gb-fg font-medium transition-all"
                   placeholder="System Operator"
                 />
               </div>
@@ -277,13 +280,13 @@ export function ProfilePage({
                   {isRtl ? 'نام کاربری' : 'Username'}
                 </label>
                 <div className="relative">
-                  <span className={`absolute top-3 text-gb-fg-dark ${isRtl ? 'right-3' : 'left-3'}`}>@</span>
-                  <input
+                  <span className={`absolute top-2.5 text-gb-fg-dark ${isRtl ? 'right-3' : 'left-3'}`}>@</span>
+                  <Input
                     type="text"
                     required
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className={`w-full bg-gb-bg-soft border-2 border-gb-bg-light focus:border-gb-yellow-light focus:outline-none p-2.5 rounded-none text-gb-fg font-medium transition-all ${isRtl ? 'pr-7' : 'pl-7'}`}
+                    className={isRtl ? 'pr-7' : 'pl-7'}
                     placeholder="operator"
                   />
                 </div>
@@ -295,32 +298,31 @@ export function ProfilePage({
                 <label className="block text-gb-fg-dark font-bold">
                   {isRtl ? 'آدرس ایمیل' : 'Email Address'}
                 </label>
-                <input
+                <Input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-gb-bg-soft border-2 border-gb-bg-light focus:border-gb-yellow-light focus:outline-none p-2.5 rounded-none text-gb-fg font-medium transition-all"
                   placeholder="mail@server.net"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <label className="block text-gb-fg-dark font-bold">
-                  {isRtl ? 'رمز عبور امنیتی' : 'Cryptographic Password'}
+                  {isRtl ? 'رمز عبور امنیتی' : 'Password'}
                 </label>
                 <div className="relative">
-                  <input
+                  <Input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`w-full bg-gb-bg-soft border-2 border-gb-bg-light focus:border-gb-yellow-light focus:outline-none p-2.5 rounded-none text-gb-fg font-medium transition-all ${isRtl ? 'pl-10' : 'pr-10'}`}
+                    className={isRtl ? 'pl-10' : 'pr-10'}
                     placeholder={isRtl ? 'برای تغییر رمز عبور بنویسید...' : 'Type to change password...'}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className={`absolute top-3 hover:text-gb-yellow-light text-gb-fg-dark focus:outline-none ${isRtl ? 'left-3' : 'right-3'}`}
+                    className={`absolute top-2.5 hover:text-gb-yellow-light text-gb-fg-dark focus:outline-none ${isRtl ? 'left-3' : 'right-3'}`}
                     title={showPassword ? 'Hide value' : 'Show value'}
                   >
                     {showPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
@@ -333,12 +335,12 @@ export function ProfilePage({
               <label className="block text-gb-fg-dark font-bold">
                 {isRtl ? 'توضیحات بیوگرافی' : 'Bio Description'}
               </label>
-              <textarea
+              <Textarea
                 value={bio}
                 rows={3}
                 onChange={(e) => setBio(e.target.value)}
-                className="w-full bg-gb-bg-soft border-2 border-gb-bg-light focus:border-gb-yellow-light focus:outline-none p-2.5 rounded-none text-gb-fg font-medium resize-none leading-relaxed transition-all"
-                placeholder={isRtl ? 'گزارش توضیحات ترمینال خود را بنویسید...' : 'Declare terminal description logs...'}
+                className="resize-none leading-relaxed"
+                placeholder={isRtl ? 'بیوگرافی خودت رو اینجا بنویس...' : 'Declare your biography log...'}
               />
             </div>
 
@@ -346,13 +348,14 @@ export function ProfilePage({
               <span className="text-xs text-gb-fg-dark leading-relaxed order-2 sm:order-1">
                 * Checksum: <code className="text-gb-aqua-light font-bold bg-gb-bg-soft px-1 rounded-none">{liveHash}</code>
               </span>
-              <button
+              <Button
                 type="submit"
                 disabled={saving}
-                className="px-5 py-2.5 bg-[#282828] border-2 border-gb-green-light text-gb-green-light hover:bg-gb-green-light hover:text-[#282828] font-bold rounded-none shadow-[2px_2px_0px_rgba(184,187,38,0.4)] transition-all flex items-center gap-1.5 cursor-pointer order-1 sm:order-2 disabled:opacity-50"
+                variant="primary"
+                className="order-1 sm:order-2 flex items-center gap-1.5 cursor-pointer"
               >
-                <FloppyDiskIcon className="w-4 h-4" /> {saving ? (isRtl ? 'در حال ثبت...' : 'Committing...') : (isRtl ? 'ثبت تغییرات وضعیت' : 'Commit State Changes')}
-              </button>
+                <FloppyDiskIcon className="w-4 h-4" /> {saving ? (isRtl ? 'در حال ثبت...' : 'Committing...') : (isRtl ? 'ثبت تغییرات' : 'Commit Changes')}
+              </Button>
             </div>
           </form>
         </div>
@@ -371,10 +374,10 @@ export function ProfilePage({
               const title = trans?.title || 'Untitled';
               const summary = trans?.summary || '';
               return (
-                <div
+                <Card
                   key={post.id}
                   onClick={() => onSelectPost(post.id)}
-                  className="border-2 border-gb-bg-soft bg-gb-bg hover:bg-gb-bg-soft/40 p-3.5 rounded-none cursor-pointer group transition-colors flex justify-between items-center gap-2"
+                  className="cursor-pointer group flex justify-between items-center gap-2 !p-3.5"
                 >
                   <div className="min-w-0 flex-1">
                     <h4 className="font-bold text-base text-gb-fg group-hover:text-gb-orange-light transition-colors line-clamp-1">
@@ -385,7 +388,7 @@ export function ProfilePage({
                   <span className="text-sm text-gb-aqua-light shrink-0">
                     <span className="flex items-center gap-1">{isRtl ? 'مطالعه' : 'Read'} <ArrowRightIcon className="w-3.5 h-3.5" /></span>
                   </span>
-                </div>
+                </Card>
               );
             })}
           </div>
@@ -411,7 +414,7 @@ export function ProfilePage({
               const title = trans?.title || tpl.id;
               const description = trans?.description || '';
               return (
-                <div key={tpl.id} className="border-2 border-gb-bg-soft bg-gb-bg p-4 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <Card key={tpl.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 !p-4">
                   <div className="flex gap-3 items-center min-w-0">
                     <FileTextIcon className="w-8 h-8 text-gb-fg-dark shrink-0" />
                     <div className="min-w-0">
@@ -420,28 +423,32 @@ export function ProfilePage({
                     </div>
                   </div>
                   
-                  <button
+                  <Button
                     onClick={(e) => {
                       e.preventDefault();
                       window.location.href = `/api/downloads/${tpl.id}`;
                     }}
-                    className="px-3 py-1.5 bg-[#282828] hover:bg-gb-green-light hover:text-[#282828] border-2 border-[#3c3836] rounded-none text-sm text-gb-fg transition-all shrink-0 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                    variant="secondary"
+                    size="sm"
+                    className="shrink-0 flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
                   >
                     <DownloadIcon className="w-4 h-4" /> {isRtl ? 'دانلود سورس' : 'Download Source'}
-                  </button>
-                </div>
+                  </Button>
+                </Card>
               );
             })}
           </div>
         ) : (
           <div className="p-6 border-2 border-dashed border-gb-bg-soft rounded-none text-center text-gb-fg-dark font-mono text-sm bg-gb-bg-soft/5">
             <p className="mb-3">{isRtl ? 'هیچ محصول یا قالبی تهیه نکرده‌اید.' : 'No acquired templates.'}</p>
-            <button
+            <Button
               onClick={onNavigateToStore}
-              className="px-3 py-1.5 bg-[#282828] border-2 border-gb-yellow-light text-gb-yellow-light hover:bg-gb-yellow-light hover:text-[#282828] transition-colors font-bold rounded-none text-sm cursor-pointer"
+              variant="secondary"
+              size="sm"
+              className="cursor-pointer"
             >
               {isRtl ? 'مشاهده فروشگاه قالب‌ها' : 'Browse Template Store'}
-            </button>
+            </Button>
           </div>
         )}
       </div>

@@ -163,9 +163,11 @@ pub struct UpdateProfileRequest {
 pub async fn get_me(
     State(pool): State<SqlitePool>,
     jar: CookieJar,
-) -> Result<Json<UserProfileResponse>, (StatusCode, String)> {
-    let user_id = get_user_from_jar(&jar)
-        .ok_or((StatusCode::UNAUTHORIZED, "Not logged in".to_string()))?;
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let user_id = match get_user_from_jar(&jar) {
+        Some(id) => id,
+        None => return Ok(Json(None::<UserProfileResponse>)),
+    };
 
     let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = ?")
         .bind(user_id)
@@ -187,7 +189,7 @@ pub async fn get_me(
     .await
     .unwrap_or_default();
 
-    Ok(Json(UserProfileResponse {
+    Ok(Json(Some(UserProfileResponse {
         id: user.id,
         username: user.username,
         avatar_url: user.avatar_url,
@@ -196,7 +198,7 @@ pub async fn get_me(
         bio: user.bio,
         saved_post_ids: saved_posts,
         purchased_template_ids: purchased_templates,
-    }))
+    })))
 }
 
 pub async fn update_profile(

@@ -1,0 +1,8 @@
+# Log40
+
+Personal blog sharing insights on software engineering, web development, and systems programming.
+
+## Core Pages
+- [Home](https://log40.runflare.run/) - Main page containing articles on Linux, backend systems, database engineering, and AI.
+- [Store](https://log40.runflare.run/store) - Digital store providing high-performance configuration templates, developer assets, and PDF files.
+- [About](https://log40.runflare.run/about) - Personal bio and professional background of Toghrol as a systems and Rust developer.

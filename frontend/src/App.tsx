@@ -17,6 +17,7 @@ import { Post, Category } from './types';
 import { UpvoteProvider } from './contexts/UpvoteContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
+import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { SEO } from './components/SEO';
 import { Button } from './components/ui/Button';
 import { CategoryButton } from './components/ui/CategoryButton';
@@ -49,6 +50,8 @@ function Home() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const { settings } = useSettings();
+
   useEffect(() => {
     const adminSecret = localStorage.getItem('adminSecret');
     const isParamAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
@@ -59,33 +62,24 @@ function Home() {
       headers['Authorization'] = `Bearer ${adminSecret}`;
     }
 
-    fetch('/api/settings')
-      .then(res => res.json())
-      .then(settings => {
-        if (settings.blog_maintenance && !isAdmin) {
-          setIsBlogMaintenance(true);
-          return;
-        }
+    if (settings) {
+      if (settings.blog_maintenance && !isAdmin) {
+        setIsBlogMaintenance(true);
+        return;
+      }
 
-        fetch('/api/posts', { headers })
-          .then(res => {
-            if (res.status === 503) {
-              setIsBlogMaintenance(true);
-              return [];
-            }
-            return res.json();
-          })
-          .then(data => setPosts(data))
-          .catch(err => console.error("Failed to fetch posts:", err));
-      })
-      .catch(err => {
-        console.error("Failed to fetch settings:", err);
-        fetch('/api/posts', { headers })
-          .then(res => res.json())
-          .then(data => setPosts(data))
-          .catch(postErr => console.error("Failed to fetch posts fallback:", postErr));
-      });
-  }, []);
+      fetch('/api/posts', { headers })
+        .then(res => {
+          if (res.status === 503) {
+            setIsBlogMaintenance(true);
+            return [];
+          }
+          return res.json();
+        })
+        .then(data => setPosts(data))
+        .catch(err => console.error("Failed to fetch posts:", err));
+    }
+  }, [settings]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -636,6 +630,7 @@ function AppContent() {
   const [isSiteMaintenance, setIsSiteMaintenance] = useState(false);
   const { t, language } = useLanguage();
   const isAdminRoute = location.pathname.includes('/admin');
+  const { settings } = useSettings();
 
   useEffect(() => {
     const adminSecret = localStorage.getItem('adminSecret');
@@ -643,15 +638,16 @@ function AppContent() {
     const isAdmin = !!adminSecret || isParamAdmin;
     const isLoginPage = window.location.pathname === '/admin';
 
-    fetch('/api/settings')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.site_maintenance && !isAdmin && !isLoginPage) {
-          setIsSiteMaintenance(true);
-        }
-      })
-      .catch((err) => console.error("Error fetching settings:", err));
-  }, []);
+    if (settings) {
+      if (settings.site_maintenance && !isAdmin && !isLoginPage) {
+        setIsSiteMaintenance(true);
+      }
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
 
   if (isSiteMaintenance) {
     return (
@@ -721,7 +717,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <LanguageProvider>
-        <AppContent />
+        <SettingsProvider>
+          <AppContent />
+        </SettingsProvider>
       </LanguageProvider>
     </BrowserRouter>
   );

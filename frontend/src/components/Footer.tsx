@@ -10,7 +10,7 @@ export function Footer() {
         <TerminalWindowIcon className="text-lg" />
         <span>System running beautifully.</span>
       </div>
-      <p className="text-xs text-gb-bg-light font-mono text-center">
+      <p className="text-xs text-gb-fg-dark/60 font-mono text-center">
         Built with React + Tailwind.<br/>
         Color scheme: Gruvbox.
       </p>
@@ -18,7 +18,7 @@ export function Footer() {
         variant="ghost"
         size="sm"
         onClick={() => navigate('/admin')}
-        className="mt-4 text-gb-bg-light hover:text-gb-fg-dark hover:bg-transparent"
+        className="mt-4 text-gb-fg-dark/50 hover:text-gb-fg hover:bg-transparent"
       >
         $ su root
       </Button>

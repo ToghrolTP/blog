@@ -19,8 +19,8 @@ fn load_base_html(target_lang: &str, dir: &str, meta: &str, body_html: &str) -> 
         .or_else(|_| std::fs::read_to_string("../frontend/index.html"))
         .unwrap_or_else(|_| "<html><head></head><body><div id=\"root\"></div><script type=\"module\" src=\"/src/main.tsx\"></script></body></html>".to_string());
 
-    // Optimize stylesheet rendering to eliminate render-blocking delay
-    if let Some(pos) = html.find("rel=\"stylesheet\"") {
+    // Inline the Vite CSS bundle to eliminate render-blocking network requests and FOUC
+    if let Some(pos) = html.find("/assets/index-") {
         let start_slice = &html[..pos];
         if let Some(start_pos) = start_slice.rfind("<link") {
             let rest_slice = &html[start_pos..];
@@ -29,12 +29,12 @@ fn load_base_html(target_lang: &str, dir: &str, meta: &str, body_html: &str) -> 
                 if let Some(href_pos) = full_tag.find("href=\"") {
                     let href_rest = &full_tag[href_pos + 6..];
                     if let Some(href_end) = href_rest.find('\"') {
-                        let css_path = &href_rest[..href_end];
-                        let optimized_tag = format!(
-                            r#"<link rel="preload" as="style" href="{}" /><link rel="stylesheet" href="{}" media="print" onload="this.media='all'" />"#,
-                            css_path, css_path
-                        );
-                        html = html.replace(full_tag, &optimized_tag);
+                        let css_path_rel = &href_rest[..href_end];
+                        let css_filepath = format!("../frontend/dist{}", css_path_rel);
+                        if let Ok(css_content) = std::fs::read_to_string(&css_filepath) {
+                            let style_tag = format!("<style>{}</style>", css_content);
+                            html = html.replace(full_tag, &style_tag);
+                        }
                     }
                 }
             }
@@ -46,8 +46,30 @@ fn load_base_html(target_lang: &str, dir: &str, meta: &str, body_html: &str) -> 
     html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
 
     html = html.replace("<html lang=\"en\">", &format!("<html lang=\"{}\" dir=\"{}\">", target_lang, dir));
+    html = html.replace("<div id=\"root\"><!-- WELCOME_BOX_PLACEHOLDER --></div>", body_html);
     html = html.replace("<div id=\"root\"></div>", body_html);
     html.replace("</head>", &format!("{}\n</head>", meta))
+}
+
+async fn get_settings_json(pool: &sqlx::SqlitePool) -> String {
+    let rows: Result<Vec<(String, String)>, _> = sqlx::query_as("SELECT key, value FROM settings")
+        .fetch_all(pool)
+        .await;
+
+    let mut map = serde_json::Map::new();
+    if let Ok(rows) = rows {
+        for (key, value) in rows {
+            let val = if value == "true" {
+                serde_json::Value::Bool(true)
+            } else if value == "false" {
+                serde_json::Value::Bool(false)
+            } else {
+                serde_json::Value::String(value)
+            };
+            map.insert(key, val);
+        }
+    }
+    serde_json::to_string(&serde_json::Value::Object(map)).unwrap_or_else(|_| "{}".to_string())
 }
 
 pub async fn serve_seo_post(
@@ -81,8 +103,11 @@ pub async fn serve_seo_post(
                 thumb.clone()
             };
             
+            let settings_json = get_settings_json(&pool).await;
+            
             let mut meta = format!(
                 r#"<title>{} | Log40</title>
+                <script>window.__INITIAL_SETTINGS__ = {};</script>
                 <meta name="description" content="{}" />
                 <link rel="canonical" href="{}" />
                 <meta property="og:title" content="{}" />
@@ -95,7 +120,7 @@ pub async fn serve_seo_post(
                 <meta name="twitter:title" content="{}" />
                 <meta name="twitter:description" content="{}" />
                 <meta name="twitter:image" content="{}" />"#,
-                escape_html(&trans.title), escape_html(&trans.summary), escape_html(&current_url),
+                escape_html(&trans.title), settings_json, escape_html(&trans.summary), escape_html(&current_url),
                 escape_html(&trans.title), escape_html(&trans.summary), escape_html(&current_url),
                 escape_html(&absolute_thumb),
                 escape_html(&trans.title), escape_html(&trans.summary),
@@ -383,8 +408,11 @@ pub async fn serve_seo_store(
         escape_html(&description), list_items_str
     );
 
+    let settings_json = get_settings_json(&pool).await;
+
     let meta = format!(
         r#"<title>{}</title>
+        <script>window.__INITIAL_SETTINGS__ = {};</script>
         <meta name="description" content="{}" />
         <link rel="canonical" href="{}" />
         <link rel="alternate" hreflang="en" href="{}/store" />
@@ -402,7 +430,7 @@ pub async fn serve_seo_store(
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>"#,
-        escape_html(store_title), escape_html(&description), escape_html(&current_url),
+        escape_html(store_title), settings_json, escape_html(&description), escape_html(&current_url),
         base_url, base_url,
         escape_html(store_title), escape_html(&description), escape_html(&current_url),
         base_url,
@@ -527,8 +555,11 @@ pub async fn serve_seo_home(
         base_url, escape_html(description), base_url, current_url, base_url, blog_posts_str
     );
 
+    let settings_json = get_settings_json(&pool).await;
+
     let meta = format!(
         r#"<title>{}</title>
+        <script>window.__INITIAL_SETTINGS__ = {};</script>
         <meta name="description" content="{}" />
         <link rel="canonical" href="{}" />
         <link rel="alternate" hreflang="en" href="{}/" />
@@ -547,7 +578,7 @@ pub async fn serve_seo_home(
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>"#,
-        escape_html(title), escape_html(description), escape_html(&current_url),
+        escape_html(title), settings_json, escape_html(description), escape_html(&current_url),
         base_url, base_url,
         escape_html(title), escape_html(description), escape_html(&current_url),
         base_url,
@@ -556,9 +587,23 @@ pub async fn serve_seo_home(
         person_schema, organization_schema, website_schema, blog_schema
     );
 
-    // ponytail: hide SEO pre-render from visual FOUC, React replaces it on mount
+    let welcome_box = if is_fa {
+        r#"<div class="mb-16 font-mono text-gb-fg-dark border-l-4 border-gb-orange-light pl-6 py-2" dir="rtl">
+            <p class="text-4xl font-bold text-gb-fg mb-4 tracking-tight rtl:tracking-normal">به /home من خوش آمدید.</p>
+            <p class="text-lg leading-relaxed">توی این وبلاگ درباره‌ی <span class="text-gb-aqua-light">اکوسیستم متن‌باز</span>، <span class="text-gb-yellow-light">توسعه‌ی بک‌اند</span>، و معرفی <span class="text-gb-green-light">ابزارها و اخبار</span> حوزه‌ی برنامه‌نویسی می‌نویسم.</p>
+        </div>"#
+    } else {
+        r#"<div class="mb-16 font-mono text-gb-fg-dark border-l-4 border-gb-orange-light pl-6 py-2" dir="ltr">
+            <p class="text-4xl font-bold text-gb-fg mb-4 tracking-tight">Welcome to my /home.</p>
+            <p class="text-lg leading-relaxed">I write about the <span class="text-gb-aqua-light">open-source</span> ecosystem, modern <span class="text-gb-yellow-light">backend development</span>, and the latest <span class="text-gb-green-light">tech tools and news</span> shaping the developer community.</p>
+        </div>"#
+    };
+
+    // ponytail: keep welcome box visible, hide rest of SEO pre-render from visual FOUC, React replaces on mount
     let mut body_html = format!(
-        r#"<div id="root"><div style="display:none">
+        r#"<div id="root">
+        {}
+        <div style="display:none">
         <header>
             <h1>Software Engineering, Linux & Rust — Log40</h1>
             <p>{}</p>
@@ -566,6 +611,7 @@ pub async fn serve_seo_home(
         <main>
             <h2>{}</h2>
             <ul>"#,
+        welcome_box,
         escape_html(description),
         if is_fa { "آخرین نوشته‌ها" } else { "Latest Posts" }
     );
@@ -603,6 +649,7 @@ pub async fn serve_seo_home(
 
 pub async fn serve_seo_about(
     uri: OriginalUri,
+    State(pool): State<SqlitePool>,
 ) -> Result<Html<String>, StatusCode> {
     let path = uri.path();
     let is_fa = path.starts_with("/fa");
@@ -629,8 +676,11 @@ pub async fn serve_seo_about(
         base_url, escape_html(description), base_url
     );
 
+    let settings_json = get_settings_json(&pool).await;
+
     let meta = format!(
         r#"<title>{}</title>
+        <script>window.__INITIAL_SETTINGS__ = {};</script>
         <meta name="description" content="{}" />
         <link rel="canonical" href="{}" />
         <link rel="alternate" hreflang="en" href="{}/about" />
@@ -646,7 +696,7 @@ pub async fn serve_seo_about(
         <meta name="twitter:description" content="{}" />
         <meta name="twitter:image" content="{}/og-image.png" />
         <script type="application/ld+json">{}</script>"#,
-        escape_html(title), escape_html(description), escape_html(&current_url),
+        escape_html(title), settings_json, escape_html(description), escape_html(&current_url),
         base_url, base_url,
         escape_html(title), escape_html(description), escape_html(&current_url),
         base_url,

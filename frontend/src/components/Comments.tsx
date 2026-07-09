@@ -7,6 +7,8 @@ import { Textarea } from './ui/Textarea';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
+import { useSettings } from '../contexts/SettingsContext';
+
 interface CommentsProps {
   postId: string;
 }
@@ -19,6 +21,7 @@ export function Comments({ postId }: CommentsProps) {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCommentsMaintenance, setIsCommentsMaintenance] = useState(false);
+  const { settings } = useSettings();
 
   useEffect(() => {
     fetchComments();
@@ -29,15 +32,14 @@ export function Comments({ postId }: CommentsProps) {
     const isParamAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
     const isAdmin = !!adminSecret || isParamAdmin;
 
-    fetch('/api/settings')
-      .then(res => res.json())
-      .then(settings => {
-        if ((settings.comments_maintenance || settings.site_maintenance) && !isAdmin) {
-          setIsCommentsMaintenance(true);
-        }
-      })
-      .catch(err => console.error("Error fetching settings in Comments:", err));
-  }, []);
+    if (settings) {
+      if ((settings.comments_maintenance || settings.site_maintenance) && !isAdmin) {
+        setIsCommentsMaintenance(true);
+      } else {
+        setIsCommentsMaintenance(false);
+      }
+    }
+  }, [settings]);
 
   const fetchComments = async () => {
     try {
