@@ -20,6 +20,48 @@ use tower_http::services::{ServeDir, ServeFile};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Ensure db/ folder is created so hook can write to it if needed
+    let _ = std::fs::create_dir_all("db");
+
+    std::panic::set_hook(Box::new(|panic_info| {
+        let msg = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            *s
+        } else if let Some(s) = panic_info.payload().downcast_ref::<String>() {
+            s.as_str()
+        } else {
+            "Box<Any>"
+        };
+        let location = panic_info.location().map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column())).unwrap_or_else(|| "unknown".to_string());
+        let log_msg = format!("PANIC at {}: {}\n", location, msg);
+        eprintln!("{}", log_msg);
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("db/crash.log")
+            .and_then(|mut f| {
+                use std::io::Write;
+                write!(f, "{}", log_msg)
+            });
+    }));
+
+    if let Err(e) = run().await {
+        let log_msg = format!("ERROR: {:?}\n", e);
+        eprintln!("{}", log_msg);
+        let _ = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open("db/crash.log")
+            .and_then(|mut f| {
+                use std::io::Write;
+                write!(f, "{}", log_msg)
+            });
+        return Err(e);
+    }
+
+    Ok(())
+}
+
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().ok();
 
     let db_url = env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite://db/blog.db".to_string());
