@@ -6,7 +6,7 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm install
 COPY frontend/ ./
-RUN npm run build
+RUN echo "Force build frontend release 1" && npm run build
 
 # ==============================================================================
 # Stage 2: Build the backend Rust app
@@ -30,7 +30,7 @@ RUN rm -rf src
 
 # Copy source code and build the real binary
 COPY backend/src ./src
-RUN cargo build --release
+RUN echo "Force build backend release 1" && cargo build --release
 
 # ==============================================================================
 # Stage 3: Runtime image
