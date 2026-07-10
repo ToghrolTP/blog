@@ -13,7 +13,9 @@ pub struct PostTranslationResponse {
     pub is_machine_translated: bool,
 }
 
-fn default_post_type_name() -> String { "linux".to_string() }
+fn default_post_type_name() -> String {
+    "linux".to_string()
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PostResponse {
@@ -138,7 +140,6 @@ pub struct CreateCommentRequest {
     pub parent_id: Option<i64>,
 }
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProductTranslationResponse {
     pub language: String,
@@ -184,6 +185,7 @@ pub struct ProductResponse {
 }
 
 #[derive(Debug, FromRow)]
+#[allow(dead_code)]
 pub struct ProductDb {
     pub id: String,
     pub title: String, // Keeping old fields as dormant columns
@@ -231,7 +233,9 @@ pub struct UpdateProductRequest {
     #[serde(rename = "filePath")]
     pub file_path: Option<String>,
 }
-fn default_type_name() -> String { "latex".to_string() }
+fn default_type_name() -> String {
+    "latex".to_string()
+}
 
 #[derive(Debug, serde::Serialize, serde::Deserialize, Clone, sqlx::FromRow)]
 pub struct OrderDb {

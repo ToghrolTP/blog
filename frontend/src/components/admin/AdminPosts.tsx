@@ -320,7 +320,13 @@ export function AdminPosts({
                               const compressed = await compressImage(file);
                               const formData = new FormData();
                               formData.append('image', compressed, 'image.webp');
-                              const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                              const res = await fetch('/api/upload', {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${secret}`
+                                },
+                                body: formData
+                              });
                               if (res.ok) {
                                 const data = await res.json();
                                 setEditingPost({...editingPost, thumbnailUrl: data.url});
@@ -436,7 +442,13 @@ export function AdminPosts({
                                       const compressed = await compressImage(file);
                                       const formData = new FormData();
                                       formData.append('image', compressed, 'image.webp');
-                                      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                                      const res = await fetch('/api/upload', {
+                                        method: 'POST',
+                                        headers: {
+                                          'Authorization': `Bearer ${secret}`
+                                        },
+                                        body: formData
+                                      });
                                       if (res.ok) {
                                         const data = await res.json();
                                         updateContentAndReadTime(currentTranslation.content + `\n![image](${data.url})`);

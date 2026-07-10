@@ -19,7 +19,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let entry = entry?;
         let path = entry.path();
         if path.is_file() {
-            let filename = path.file_name().unwrap_or_default().to_string_lossy().to_string();
+            let filename = path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string();
             // Skip hidden files
             if filename.starts_with('.') {
                 continue;
@@ -96,9 +100,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let total_saved = total_original_size.saturating_sub(total_optimized_size);
         println!("\nOptimization complete!");
         println!("Total files optimized: {}", files_optimized);
-        println!("Original total size: {:.1} MiB", total_original_size as f64 / (1024.0 * 1024.0));
-        println!("Optimized total size: {:.1} MiB", total_optimized_size as f64 / (1024.0 * 1024.0));
-        println!("Total space saved: {:.1} MiB ({:.1}% saved)", total_saved as f64 / (1024.0 * 1024.0), (total_saved as f64 / total_original_size as f64) * 100.0);
+        println!(
+            "Original total size: {:.1} MiB",
+            total_original_size as f64 / (1024.0 * 1024.0)
+        );
+        println!(
+            "Optimized total size: {:.1} MiB",
+            total_optimized_size as f64 / (1024.0 * 1024.0)
+        );
+        println!(
+            "Total space saved: {:.1} MiB ({:.1}% saved)",
+            total_saved as f64 / (1024.0 * 1024.0),
+            (total_saved as f64 / total_original_size as f64) * 100.0
+        );
     } else {
         println!("\nNo images optimized.");
     }

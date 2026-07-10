@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use axum_extra::extract::cookie::CookieJar;
 use serde::Serialize;
@@ -19,8 +19,8 @@ pub async fn toggle_save_post(
     Path(post_id): Path<String>,
     jar: CookieJar,
 ) -> Result<Json<SaveResponse>, (StatusCode, String)> {
-    let user_id = get_user_from_jar(&jar)
-        .ok_or((StatusCode::UNAUTHORIZED, "Not logged in".to_string()))?;
+    let user_id =
+        get_user_from_jar(&jar).ok_or((StatusCode::UNAUTHORIZED, "Not logged in".to_string()))?;
 
     // Check if post exists
     let post_exists: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM posts WHERE id = ?")
@@ -33,12 +33,13 @@ pub async fn toggle_save_post(
         return Err((StatusCode::NOT_FOUND, "Post not found".to_string()));
     }
 
-    let existing: Option<(String,)> = sqlx::query_as("SELECT post_id FROM saved_posts WHERE post_id = ? AND user_id = ?")
-        .bind(&post_id)
-        .bind(user_id)
-        .fetch_optional(&pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let existing: Option<(String,)> =
+        sqlx::query_as("SELECT post_id FROM saved_posts WHERE post_id = ? AND user_id = ?")
+            .bind(&post_id)
+            .bind(user_id)
+            .fetch_optional(&pool)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let is_saved: bool;
 

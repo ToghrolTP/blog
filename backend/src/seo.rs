@@ -8,10 +8,10 @@ use std::env;
 
 fn escape_html(s: &str) -> String {
     s.replace("&", "&amp;")
-     .replace("<", "&lt;")
-     .replace(">", "&gt;")
-     .replace("\"", "&quot;")
-     .replace("'", "&#x27;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace("\"", "&quot;")
+        .replace("'", "&#x27;")
 }
 
 fn load_base_html(target_lang: &str, dir: &str, meta: &str, body_html: &str) -> String {
@@ -45,8 +45,14 @@ fn load_base_html(target_lang: &str, dir: &str, meta: &str, body_html: &str) -> 
     html = html.replace("<title>Vite App</title>", "");
     html = html.replace("<meta name=\"description\" content=\"Personal blog sharing insights on software engineering, web development, and technology.\" />", "");
 
-    html = html.replace("<html lang=\"en\">", &format!("<html lang=\"{}\" dir=\"{}\">", target_lang, dir));
-    html = html.replace("<div id=\"root\"><!-- WELCOME_BOX_PLACEHOLDER --></div>", body_html);
+    html = html.replace(
+        "<html lang=\"en\">",
+        &format!("<html lang=\"{}\" dir=\"{}\">", target_lang, dir),
+    );
+    html = html.replace(
+        "<div id=\"root\"><!-- WELCOME_BOX_PLACEHOLDER --></div>",
+        body_html,
+    );
     html = html.replace("<div id=\"root\"></div>", body_html);
     html.replace("</head>", &format!("{}\n</head>", meta))
 }
@@ -80,19 +86,24 @@ pub async fn serve_seo_post(
     let base_html = std::fs::read_to_string("../frontend/dist/index.html")
         .or_else(|_| std::fs::read_to_string("../frontend/index.html"))
         .unwrap_or_else(|_| "<html><head></head><body><div id=\"root\"></div><script type=\"module\" src=\"/src/main.tsx\"></script></body></html>".to_string());
-        
-    let post = sqlx::query_as::<_, crate::models::PostDb>("SELECT * FROM posts WHERE id = ?").bind(&id).fetch_optional(&pool).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
+
+    let post = sqlx::query_as::<_, crate::models::PostDb>("SELECT * FROM posts WHERE id = ?")
+        .bind(&id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     if let Some(post) = post {
         let is_fa = uri.path().starts_with("/fa/");
         let target_lang = if is_fa { "fa" } else { "en" };
-        
+
         let translations = sqlx::query_as::<_, crate::models::PostTranslationDb>(
             "SELECT post_id, language, title, summary, content, read_time, is_machine_translated FROM post_translations WHERE post_id = ?"
         ).bind(&id).fetch_all(&pool).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        
+
         if let Some(trans) = translations.iter().find(|t| t.language == target_lang) {
-            let base_url = env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
+            let base_url =
+                env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
             let current_url = format!("{}{}", base_url, uri.path());
             let thumb = post.thumbnail_url.unwrap_or_default();
             let absolute_thumb = if thumb.is_empty() {
@@ -102,9 +113,9 @@ pub async fn serve_seo_post(
             } else {
                 thumb.clone()
             };
-            
+
             let settings_json = get_settings_json(&pool).await;
-            
+
             let mut meta = format!(
                 r#"<title>{} | Log40</title>
                 <script>window.__INITIAL_SETTINGS__ = {};</script>
@@ -120,13 +131,19 @@ pub async fn serve_seo_post(
                 <meta name="twitter:title" content="{}" />
                 <meta name="twitter:description" content="{}" />
                 <meta name="twitter:image" content="{}" />"#,
-                escape_html(&trans.title), settings_json, escape_html(&trans.summary), escape_html(&current_url),
-                escape_html(&trans.title), escape_html(&trans.summary), escape_html(&current_url),
+                escape_html(&trans.title),
+                settings_json,
+                escape_html(&trans.summary),
+                escape_html(&current_url),
+                escape_html(&trans.title),
+                escape_html(&trans.summary),
+                escape_html(&current_url),
                 escape_html(&absolute_thumb),
-                escape_html(&trans.title), escape_html(&trans.summary),
+                escape_html(&trans.title),
+                escape_html(&trans.summary),
                 escape_html(&absolute_thumb)
             );
-            
+
             for t in &translations {
                 let alt_url = if t.language == "fa" {
                     format!("{}/fa/post/{}", base_url, id)
@@ -145,9 +162,9 @@ pub async fn serve_seo_post(
                     escape_html(&absolute_thumb)
                 ));
             }
-            
+
             let dir = if is_fa { "rtl" } else { "ltr" };
-            
+
             let mut article_html = String::new();
             let parser = pulldown_cmark::Parser::new(&trans.content);
             pulldown_cmark::html::push_html(&mut article_html, parser);
@@ -176,7 +193,13 @@ pub async fn serve_seo_post(
                     <section>{}</section>
                 </article>
                 </div></div>"#,
-                dir, escape_html(&trans.title), escape_html(&post.date), escape_html(&post.date), escape_html(&trans.summary), img_html, article_html
+                dir,
+                escape_html(&trans.title),
+                escape_html(&post.date),
+                escape_html(&post.date),
+                escape_html(&trans.summary),
+                img_html,
+                article_html
             );
 
             // Add schema markup
@@ -190,7 +213,16 @@ pub async fn serve_seo_post(
             );
             let blogposting_schema = format!(
                 r#"{{"@context":"https://schema.org","@type":"BlogPosting","@id":"{}#blogposting","headline":"{}","description":"{}","url":"{}","mainEntityOfPage":{{"@type":"WebPage","@id":"{}"}},"datePublished":"{}","dateModified":"{}","author":{{"@id":"{}/#person"}},"publisher":{{"@id":"{}/#organization"}},"keywords":{}}}"#,
-                current_url, escape_html(&trans.title), escape_html(&trans.summary), current_url, current_url, escape_html(&post.date), escape_html(&post.date), base_url, base_url, post.tags
+                current_url,
+                escape_html(&trans.title),
+                escape_html(&trans.summary),
+                current_url,
+                current_url,
+                escape_html(&post.date),
+                escape_html(&post.date),
+                base_url,
+                base_url,
+                post.tags
             );
 
             meta.push_str(&format!(
@@ -203,7 +235,7 @@ pub async fn serve_seo_post(
             return Ok(Html(load_base_html(target_lang, dir, &meta, &body_html)));
         }
     }
-    
+
     Ok(Html(base_html))
 }
 
@@ -212,19 +244,25 @@ pub async fn serve_seo_product(
     Path(id): Path<String>,
     State(pool): State<SqlitePool>,
 ) -> Result<Html<String>, StatusCode> {
-    let product = sqlx::query_as::<_, crate::models::ProductDb>("SELECT * FROM products WHERE id = ?").bind(&id).fetch_optional(&pool).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    
+    let product =
+        sqlx::query_as::<_, crate::models::ProductDb>("SELECT * FROM products WHERE id = ?")
+            .bind(&id)
+            .fetch_optional(&pool)
+            .await
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     if let Some(product) = product {
         let is_fa = uri.path().starts_with("/fa/");
         let target_lang = if is_fa { "fa" } else { "en" };
         let dir = if is_fa { "rtl" } else { "ltr" };
-        let base_url = env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
+        let base_url =
+            env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
         let current_url = format!("{}{}", base_url, uri.path());
-        
+
         let translations = sqlx::query_as::<_, crate::models::ProductTranslationDb>(
             "SELECT product_id, language, title, description, features, price FROM product_translations WHERE product_id = ?"
         ).bind(&id).fetch_all(&pool).await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        
+
         if let Some(trans) = translations.iter().find(|t| t.language == target_lang) {
             let thumb = product.thumbnail_url.clone().unwrap_or_default();
             let absolute_thumb = if thumb.is_empty() {
@@ -234,7 +272,7 @@ pub async fn serve_seo_product(
             } else {
                 thumb.clone()
             };
-            
+
             let mut meta = format!(
                 r#"<title>{} | Log40</title>
                 <meta name="description" content="{}" />
@@ -249,13 +287,18 @@ pub async fn serve_seo_product(
                 <meta name="twitter:title" content="{}" />
                 <meta name="twitter:description" content="{}" />
                 <meta name="twitter:image" content="{}" />"#,
-                escape_html(&trans.title), escape_html(&trans.description), escape_html(&current_url),
-                escape_html(&trans.title), escape_html(&trans.description), escape_html(&current_url),
+                escape_html(&trans.title),
+                escape_html(&trans.description),
+                escape_html(&current_url),
+                escape_html(&trans.title),
+                escape_html(&trans.description),
+                escape_html(&current_url),
                 escape_html(&absolute_thumb),
-                escape_html(&trans.title), escape_html(&trans.description),
+                escape_html(&trans.title),
+                escape_html(&trans.description),
                 escape_html(&absolute_thumb)
             );
-            
+
             for t in &translations {
                 let alt_url = if t.language == "fa" {
                     format!("{}/fa/store/product/{}", base_url, id)
@@ -274,7 +317,7 @@ pub async fn serve_seo_product(
                     escape_html(&absolute_thumb)
                 ));
             }
-            
+
             let person_schema = format!(
                 r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"],"image":"{}/avatar.png","knowsAbout":["Rust (Programming Language)","Software Engineering","Linux","Backend Development"]}}"#,
                 base_url, base_url
@@ -287,7 +330,12 @@ pub async fn serve_seo_product(
 
             let product_schema = format!(
                 r#"{{"@context":"https://schema.org","@type":"Product","@id":"{}#product","name":"{}","image":"{}","description":"{}","offers":{{"@type":"Offer","priceCurrency":"USD","price":{},"availability":"https://schema.org/InStock","seller":{{"@id":"{}/#organization"}}}}}}"#,
-                current_url, escape_html(&trans.title), escape_html(&absolute_thumb), escape_html(&trans.description), trans.price, base_url
+                current_url,
+                escape_html(&trans.title),
+                escape_html(&absolute_thumb),
+                escape_html(&trans.description),
+                trans.price,
+                base_url
             );
 
             meta.push_str(&format!(
@@ -323,7 +371,11 @@ pub async fn serve_seo_product(
                         <p>{}</p>
                         <h2>Features</h2>
                         <ul>"#,
-                dir, escape_html(&trans.title), trans.price, img_html, escape_html(&trans.description)
+                dir,
+                escape_html(&trans.title),
+                trans.price,
+                img_html,
+                escape_html(&trans.description)
             );
             for feat in features {
                 body_html.push_str(&format!("<li>{}</li>\n", escape_html(&feat)));
@@ -332,13 +384,13 @@ pub async fn serve_seo_product(
                 r#"</ul>
                     </section>
                 </article>
-                </div></div>"#
+                </div></div>"#,
             );
 
             return Ok(Html(load_base_html(target_lang, dir, &meta, &body_html)));
         }
     }
-    
+
     Err(StatusCode::NOT_FOUND)
 }
 
@@ -354,13 +406,19 @@ pub async fn serve_seo_store(
     let is_fa = uri.path().starts_with("/fa/");
     let target_lang = if is_fa { "fa" } else { "en" };
     let dir = if is_fa { "rtl" } else { "ltr" };
-    
+
     let description = if is_fa {
-        format!("دانلود قالب‌های LaTeX، کتاب‌های فنی و ابزارهای مهندسی. گردآوری شده توسط طغرل برای مهندسان نرم‌افزار و پژوهشگران. شامل {} محصول دیجیتال.", products_db.len())
+        format!(
+            "دانلود قالب‌های LaTeX، کتاب‌های فنی و ابزارهای مهندسی. گردآوری شده توسط طغرل برای مهندسان نرم‌افزار و پژوهشگران. شامل {} محصول دیجیتال.",
+            products_db.len()
+        )
     } else {
-        format!("Download LaTeX templates, technical books, and engineering tools. Curated by Toghrol for software engineers and researchers. Explore {} digital products.", products_db.len())
+        format!(
+            "Download LaTeX templates, technical books, and engineering tools. Curated by Toghrol for software engineers and researchers. Explore {} digital products.",
+            products_db.len()
+        )
     };
-    
+
     let base_url = env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
     let current_url = format!("{}{}", base_url, uri.path());
     let store_title = if is_fa {
@@ -382,14 +440,22 @@ pub async fn serve_seo_store(
     );
     let organization_schema = format!(
         r#"{{"@context":"https://schema.org","@type":"Organization","@id":"{}/#organization","name":"Log40","url":"{}/","logo":"{}/favicon.png","description":"{}","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
-        base_url, base_url, base_url, escape_html(&description)
+        base_url,
+        base_url,
+        base_url,
+        escape_html(&description)
     );
 
     let mut list_items_json = Vec::new();
     for (idx, prod) in products_db.iter().enumerate() {
-        if let Some(trans) = translations_db.iter()
+        if let Some(trans) = translations_db
+            .iter()
             .find(|t| t.product_id == prod.id && t.language == target_lang)
-            .or_else(|| translations_db.iter().find(|t| t.product_id == prod.id && t.language == "en"))
+            .or_else(|| {
+                translations_db
+                    .iter()
+                    .find(|t| t.product_id == prod.id && t.language == "en")
+            })
         {
             let prod_url = if is_fa {
                 format!("{}/fa/store/product/{}", base_url, prod.id)
@@ -398,14 +464,17 @@ pub async fn serve_seo_store(
             };
             list_items_json.push(format!(
                 r#"{{"@type":"ListItem","position":{},"name":"{}","url":"{}"}}"#,
-                idx + 1, escape_html(&trans.title), prod_url
+                idx + 1,
+                escape_html(&trans.title),
+                prod_url
             ));
         }
     }
     let list_items_str = list_items_json.join(",");
     let item_list_schema = format!(
         r#"{{"@context":"https://schema.org","@type":"ItemList","name":"Log40 Store","description":"{}","itemListElement":[{}]}}"#,
-        escape_html(&description), list_items_str
+        escape_html(&description),
+        list_items_str
     );
 
     let settings_json = get_settings_json(&pool).await;
@@ -430,15 +499,24 @@ pub async fn serve_seo_store(
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>"#,
-        escape_html(store_title), settings_json, escape_html(&description), escape_html(&current_url),
-        base_url, base_url,
-        escape_html(store_title), escape_html(&description), escape_html(&current_url),
+        escape_html(store_title),
+        settings_json,
+        escape_html(&description),
+        escape_html(&current_url),
         base_url,
-        escape_html(store_title), escape_html(&description),
         base_url,
-        person_schema, organization_schema, item_list_schema
+        escape_html(store_title),
+        escape_html(&description),
+        escape_html(&current_url),
+        base_url,
+        escape_html(store_title),
+        escape_html(&description),
+        base_url,
+        person_schema,
+        organization_schema,
+        item_list_schema
     );
-    
+
     // Fetch translations for pre-rendering store contents inside #root
     // ponytail: hide SEO pre-render from visual FOUC, React replaces it on mount
     let mut body_html = format!(
@@ -453,9 +531,14 @@ pub async fn serve_seo_store(
     );
 
     for prod in products_db {
-        if let Some(trans) = translations_db.iter()
+        if let Some(trans) = translations_db
+            .iter()
             .find(|t| t.product_id == prod.id && t.language == target_lang)
-            .or_else(|| translations_db.iter().find(|t| t.product_id == prod.id && t.language == "en"))
+            .or_else(|| {
+                translations_db
+                    .iter()
+                    .find(|t| t.product_id == prod.id && t.language == "en")
+            })
         {
             let prod_url = if is_fa {
                 format!("/fa/store/product/{}", prod.id)
@@ -479,7 +562,7 @@ pub async fn serve_seo_store(
     body_html.push_str(
         r#"</ul>
         </main>
-        </div></div>"#
+        </div></div>"#,
     );
 
     Ok(Html(load_base_html(target_lang, dir, &meta, &body_html)))
@@ -493,7 +576,7 @@ pub async fn serve_seo_home(
     let is_fa = path.starts_with("/fa");
     let target_lang = if is_fa { "fa" } else { "en" };
     let dir = if is_fa { "rtl" } else { "ltr" };
-    
+
     // Fetch top 10 posts
     let posts_db = sqlx::query_as::<_, crate::models::PostDb>(
         "SELECT id, date, tags, upvotes, thumbnail_url, type FROM posts ORDER BY date DESC LIMIT 10"
@@ -531,12 +614,19 @@ pub async fn serve_seo_home(
 
     let organization_schema = format!(
         r#"{{"@context":"https://schema.org","@type":"Organization","@id":"{}/#organization","name":"Log40","url":"{}/","logo":"{}/favicon.png","description":"{}","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"]}}"#,
-        base_url, base_url, base_url, escape_html(description)
+        base_url,
+        base_url,
+        base_url,
+        escape_html(description)
     );
 
     let website_schema = format!(
         r#"{{"@context":"https://schema.org","@type":"WebSite","@id":"{}/#website","url":"{}/","name":"Log40","description":"{}","publisher":{{"@id":"{}/#organization"}},"potentialAction":{{"@type":"SearchAction","target":{{"@type":"EntryPoint","urlTemplate":"{}/?q={{search_term_string}}"}},"query-input":"required name=search_term_string"}}}}"#,
-        base_url, base_url, escape_html(description), base_url, base_url
+        base_url,
+        base_url,
+        escape_html(description),
+        base_url,
+        base_url
     );
 
     let mut blog_posts_json = Vec::new();
@@ -546,13 +636,21 @@ pub async fn serve_seo_home(
         } else {
             format!("{}/post/{}", base_url, db_post.id)
         };
-        blog_posts_json.push(format!(r#"{{"@type":"BlogPosting","@id":"{}#blogposting"}}"#, post_url));
+        blog_posts_json.push(format!(
+            r#"{{"@type":"BlogPosting","@id":"{}#blogposting"}}"#,
+            post_url
+        ));
     }
     let blog_posts_str = blog_posts_json.join(",");
 
     let blog_schema = format!(
         r#"{{"@context":"https://schema.org","@type":"Blog","@id":"{}/#blog","name":"Log40 Blog","description":"{}","publisher":{{"@id":"{}/#organization"}},"inLanguage":["en","fa"],"url":"{}","author":{{"@id":"{}/#person"}},"blogPost":[{}]}}"#,
-        base_url, escape_html(description), base_url, current_url, base_url, blog_posts_str
+        base_url,
+        escape_html(description),
+        base_url,
+        current_url,
+        base_url,
+        blog_posts_str
     );
 
     let settings_json = get_settings_json(&pool).await;
@@ -578,13 +676,23 @@ pub async fn serve_seo_home(
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>
         <script type="application/ld+json">{}</script>"#,
-        escape_html(title), settings_json, escape_html(description), escape_html(&current_url),
-        base_url, base_url,
-        escape_html(title), escape_html(description), escape_html(&current_url),
+        escape_html(title),
+        settings_json,
+        escape_html(description),
+        escape_html(&current_url),
         base_url,
-        escape_html(title), escape_html(description),
         base_url,
-        person_schema, organization_schema, website_schema, blog_schema
+        escape_html(title),
+        escape_html(description),
+        escape_html(&current_url),
+        base_url,
+        escape_html(title),
+        escape_html(description),
+        base_url,
+        person_schema,
+        organization_schema,
+        website_schema,
+        blog_schema
     );
 
     let welcome_box = if is_fa {
@@ -613,11 +721,18 @@ pub async fn serve_seo_home(
             <ul>"#,
         welcome_box,
         escape_html(description),
-        if is_fa { "آخرین نوشته‌ها" } else { "Latest Posts" }
+        if is_fa {
+            "آخرین نوشته‌ها"
+        } else {
+            "Latest Posts"
+        }
     );
 
     for db_post in posts_db {
-        if let Some(trans) = translations_db.iter().find(|t| t.post_id == db_post.id && t.language == target_lang) {
+        if let Some(trans) = translations_db
+            .iter()
+            .find(|t| t.post_id == db_post.id && t.language == target_lang)
+        {
             let post_url = if is_fa {
                 format!("/fa/post/{}", db_post.id)
             } else {
@@ -641,7 +756,7 @@ pub async fn serve_seo_home(
     body_html.push_str(
         r#"</ul>
         </main>
-        </div></div>"#
+        </div></div>"#,
     );
 
     Ok(Html(load_base_html(target_lang, dir, &meta, &body_html)))
@@ -655,7 +770,7 @@ pub async fn serve_seo_about(
     let is_fa = path.starts_with("/fa");
     let target_lang = if is_fa { "fa" } else { "en" };
     let dir = if is_fa { "rtl" } else { "ltr" };
-    
+
     let base_url = env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
     let current_url = format!("{}{}", base_url, path);
 
@@ -673,7 +788,9 @@ pub async fn serve_seo_about(
 
     let person_schema = format!(
         r#"{{"@context":"https://schema.org","@type":"Person","@id":"{}/#person","name":"Toghrol","url":"https://github.com/toghrol","sameAs":["https://github.com/toghrol","https://www.linkedin.com/in/toghrol/"],"jobTitle":"Systems & Rust Software Engineer","description":"{}","image":"{}/avatar.png","knowsAbout":["Rust (Programming Language)","Software Engineering","Linux","Backend Development"]}}"#,
-        base_url, escape_html(description), base_url
+        base_url,
+        escape_html(description),
+        base_url
     );
 
     let settings_json = get_settings_json(&pool).await;
@@ -696,19 +813,25 @@ pub async fn serve_seo_about(
         <meta name="twitter:description" content="{}" />
         <meta name="twitter:image" content="{}/og-image.png" />
         <script type="application/ld+json">{}</script>"#,
-        escape_html(title), settings_json, escape_html(description), escape_html(&current_url),
-        base_url, base_url,
-        escape_html(title), escape_html(description), escape_html(&current_url),
+        escape_html(title),
+        settings_json,
+        escape_html(description),
+        escape_html(&current_url),
         base_url,
-        escape_html(title), escape_html(description),
+        base_url,
+        escape_html(title),
+        escape_html(description),
+        escape_html(&current_url),
+        base_url,
+        escape_html(title),
+        escape_html(description),
         base_url,
         person_schema
     );
 
     // ponytail: hide SEO pre-render from visual FOUC, React replaces it on mount
     let body_html = if is_fa {
-        format!(
-            r#"<div id="root"><div style="display:none">
+        r#"<div id="root"><div style="display:none">
             <article dir="rtl">
                 <header>
                     <img src="/avatar.png" alt="طغرل - مهندس سیستم و توسعه‌دهنده راست" />
@@ -726,11 +849,9 @@ pub async fn serve_seo_about(
                     </ul>
                 </section>
             </article>
-            </div></div>"#
-        )
+            </div></div>"#.to_string()
     } else {
-        format!(
-            r#"<div id="root"><div style="display:none">
+        r#"<div id="root"><div style="display:none">
             <article dir="ltr">
                 <header>
                     <img src="/avatar.png" alt="Toghrol - Systems & Rust Software Engineer" />
@@ -748,8 +869,7 @@ pub async fn serve_seo_about(
                     </ul>
                 </section>
             </article>
-            </div></div>"#
-        )
+            </div></div>"#.to_string()
     };
 
     Ok(Html(load_base_html(target_lang, dir, &meta, &body_html)))

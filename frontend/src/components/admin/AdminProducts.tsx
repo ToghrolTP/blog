@@ -280,7 +280,13 @@ export function AdminProducts({
                                 const compressed = await compressImage(file);
                                 const formData = new FormData();
                                 formData.append('image', compressed, 'image.webp');
-                                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                                const res = await fetch('/api/upload', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Authorization': `Bearer ${secret}`
+                                  },
+                                  body: formData
+                                });
                                 if (res.ok) {
                                   const data = await res.json();
                                   setEditingProduct({...editingProduct, thumbnailUrl: data.url});
@@ -315,7 +321,13 @@ export function AdminProducts({
                                   const compressed = await compressImage(file);
                                   const formData = new FormData();
                                   formData.append('image', compressed, 'image.webp');
-                                  const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                                  const res = await fetch('/api/upload', {
+                                   method: 'POST',
+                                   headers: {
+                                     'Authorization': `Bearer ${secret}`
+                                   },
+                                   body: formData
+                                 });
                                   if (res.ok) {
                                     const data = await res.json();
                                     uploadedUrls.push(data.url);

@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
-    Json,
 };
 use sqlx::SqlitePool;
 
@@ -24,16 +24,26 @@ pub async fn get_posts(
     headers: axum::http::HeaderMap,
     State(pool): State<SqlitePool>,
 ) -> Result<Json<Vec<PostResponse>>, (StatusCode, String)> {
-    if is_under_maintenance(&pool, "site_maintenance").await || is_under_maintenance(&pool, "blog_maintenance").await {
-        if check_auth(&headers).is_err() {
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "Blog is under maintenance".to_string()));
+    if (is_under_maintenance(&pool, "site_maintenance").await
+        || is_under_maintenance(&pool, "blog_maintenance").await)
+        && check_auth(&headers).is_err() {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Blog is under maintenance".to_string(),
+            ));
         }
-    }
 
-    let posts_db = sqlx::query_as::<_, PostDb>("SELECT id, date, tags, upvotes, thumbnail_url, type FROM posts ORDER BY date DESC")
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+    let posts_db = sqlx::query_as::<_, PostDb>(
+        "SELECT id, date, tags, upvotes, thumbnail_url, type FROM posts ORDER BY date DESC",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+    })?;
 
     let translations_db = sqlx::query_as::<_, PostTranslationDb>("SELECT post_id, language, title, summary, content, read_time, is_machine_translated FROM post_translations")
         .fetch_all(&pool)
@@ -43,7 +53,8 @@ pub async fn get_posts(
     let mut posts = Vec::new();
     for db in posts_db {
         let tags: Vec<String> = serde_json::from_str(&db.tags).unwrap_or_default();
-        let trans = translations_db.iter()
+        let trans = translations_db
+            .iter()
             .filter(|t| t.post_id == db.id)
             .map(|t| PostTranslationResponse {
                 language: t.language.clone(),
@@ -69,12 +80,22 @@ pub async fn get_posts(
     Ok(Json(posts))
 }
 
-async fn get_post_internal(pool: &SqlitePool, id: String) -> Result<Json<PostResponse>, (StatusCode, String)> {
-    let post_db = sqlx::query_as::<_, PostDb>("SELECT id, date, tags, upvotes, thumbnail_url, type FROM posts WHERE id = ?")
-        .bind(&id)
-        .fetch_optional(pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+async fn get_post_internal(
+    pool: &SqlitePool,
+    id: String,
+) -> Result<Json<PostResponse>, (StatusCode, String)> {
+    let post_db = sqlx::query_as::<_, PostDb>(
+        "SELECT id, date, tags, upvotes, thumbnail_url, type FROM posts WHERE id = ?",
+    )
+    .bind(&id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+    })?;
 
     let db = match post_db {
         Some(db) => db,
@@ -88,7 +109,8 @@ async fn get_post_internal(pool: &SqlitePool, id: String) -> Result<Json<PostRes
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
 
     let tags: Vec<String> = serde_json::from_str(&db.tags).unwrap_or_default();
-    let trans = translations_db.into_iter()
+    let trans = translations_db
+        .into_iter()
         .map(|t| PostTranslationResponse {
             language: t.language,
             title: t.title,
@@ -115,26 +137,30 @@ pub async fn get_post(
     State(pool): State<SqlitePool>,
     Path(id): Path<String>,
 ) -> Result<Json<PostResponse>, (StatusCode, String)> {
-    if is_under_maintenance(&pool, "site_maintenance").await || is_under_maintenance(&pool, "blog_maintenance").await {
-        if check_auth(&headers).is_err() {
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "Blog is under maintenance".to_string()));
+    if (is_under_maintenance(&pool, "site_maintenance").await
+        || is_under_maintenance(&pool, "blog_maintenance").await)
+        && check_auth(&headers).is_err() {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Blog is under maintenance".to_string(),
+            ));
         }
-    }
     get_post_internal(&pool, id).await
 }
 
 pub fn check_auth(headers: &axum::http::HeaderMap) -> Result<(), (StatusCode, String)> {
     let secret = std::env::var("ADMIN_SECRET").map_err(|_| {
-        (StatusCode::INTERNAL_SERVER_ERROR, "Server misconfiguration: ADMIN_SECRET not set".to_string())
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Server misconfiguration: ADMIN_SECRET not set".to_string(),
+        )
     })?;
-    
-    if let Some(auth_header) = headers.get(axum::http::header::AUTHORIZATION) {
-        if let Ok(auth_str) = auth_header.to_str() {
-            if auth_str == format!("Bearer {}", secret) {
+
+    if let Some(auth_header) = headers.get(axum::http::header::AUTHORIZATION)
+        && let Ok(auth_str) = auth_header.to_str()
+            && auth_str == format!("Bearer {}", secret) {
                 return Ok(());
             }
-        }
-    }
     Err((StatusCode::UNAUTHORIZED, "Unauthorized".to_string()))
 }
 
@@ -145,11 +171,17 @@ pub async fn create_post(
 ) -> Result<Json<PostResponse>, (StatusCode, String)> {
     check_auth(&headers)?;
 
-    let id = payload.id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
-    
+    let id = payload
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+
     let tags_json = serde_json::to_string(&payload.tags).unwrap_or_else(|_| "[]".to_string());
-    
-    let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     sqlx::query("PRAGMA defer_foreign_keys = ON")
         .execute(&mut *tx)
         .await
@@ -179,7 +211,9 @@ pub async fn create_post(
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 
-    tx.commit().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     get_post_internal(&pool, id).await
 }
@@ -194,23 +228,28 @@ pub async fn update_post(
 
     let final_id = payload.id.clone();
     let tags_json = serde_json::to_string(&payload.tags).unwrap_or_else(|_| "[]".to_string());
-    
-    let mut tx = pool.begin().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let mut tx = pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     sqlx::query("PRAGMA defer_foreign_keys = ON")
         .execute(&mut *tx)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    let result = sqlx::query("UPDATE posts SET id = ?, date = ?, tags = ?, thumbnail_url = ?, type = ? WHERE id = ?")
-        .bind(&final_id)
-        .bind(&payload.date)
-        .bind(&tags_json)
-        .bind(&payload.thumbnail_url)
-        .bind(&payload.type_name)
-        .bind(&id)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let result = sqlx::query(
+        "UPDATE posts SET id = ?, date = ?, tags = ?, thumbnail_url = ?, type = ? WHERE id = ?",
+    )
+    .bind(&final_id)
+    .bind(&payload.date)
+    .bind(&tags_json)
+    .bind(&payload.thumbnail_url)
+    .bind(&payload.type_name)
+    .bind(&id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     if result.rows_affected() == 0 {
         return Err((StatusCode::NOT_FOUND, "Post not found".to_string()));
@@ -252,7 +291,9 @@ pub async fn update_post(
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
 
-    tx.commit().await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     get_post_internal(&pool, final_id).await
 }
@@ -263,8 +304,10 @@ pub async fn delete_post(
     Path(id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     check_auth(&headers)?;
-    
-    let mut tx = pool.begin().await
+
+    let mut tx = pool
+        .begin()
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // 1. Delete comment upvotes for this post's comments
@@ -308,7 +351,8 @@ pub async fn delete_post(
         return Err((StatusCode::NOT_FOUND, "Post not found".to_string()));
     }
 
-    tx.commit().await
+    tx.commit()
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -317,17 +361,25 @@ pub async fn delete_post(
 pub async fn sitemap_xml(
     State(pool): State<SqlitePool>,
 ) -> Result<(axum::http::HeaderMap, String), (StatusCode, String)> {
-    let posts_db = sqlx::query_as::<_, PostDb>("SELECT id, date, tags, upvotes, thumbnail_url FROM posts ORDER BY date DESC")
-        .fetch_all(&pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+    let posts_db = sqlx::query_as::<_, PostDb>(
+        "SELECT id, date, tags, upvotes, thumbnail_url FROM posts ORDER BY date DESC",
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+    })?;
 
-    let base_url = std::env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
-    
+    let base_url =
+        std::env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
+
     let mut xml = String::new();
     xml.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     xml.push_str("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
-    
+
     // English Home
     xml.push_str(&format!(
         "  <url>\n    <loc>{}</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n",
@@ -376,12 +428,17 @@ pub async fn sitemap_xml(
             base_url, post.id, post.date
         ));
     }
-    
+
     let products_db = sqlx::query_as::<_, crate::models::ProductDb>("SELECT * FROM products")
         .fetch_all(&pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
-        
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+        })?;
+
     for product in products_db {
         // English Product
         xml.push_str(&format!(
@@ -394,21 +451,28 @@ pub async fn sitemap_xml(
             base_url, product.id
         ));
     }
-    
+
     xml.push_str("</urlset>");
 
     let mut headers = axum::http::HeaderMap::new();
-    headers.insert(axum::http::header::CONTENT_TYPE, "application/xml".parse().unwrap());
-    
+    headers.insert(
+        axum::http::header::CONTENT_TYPE,
+        "application/xml".parse().unwrap(),
+    );
+
     Ok((headers, xml))
 }
 
 pub async fn robots_txt() -> (axum::http::HeaderMap, String) {
-    let base_url = std::env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
-    
+    let base_url =
+        std::env::var("BASE_URL").unwrap_or_else(|_| "https://log40.liara.run".to_string());
+
     let mut headers = axum::http::HeaderMap::new();
-    headers.insert(axum::http::header::CONTENT_TYPE, "text/plain".parse().unwrap());
-    
+    headers.insert(
+        axum::http::header::CONTENT_TYPE,
+        "text/plain".parse().unwrap(),
+    );
+
     let content = format!(
         "User-agent: *\nDisallow: /admin\nAllow: /\n\n\
          User-agent: GPTBot\nAllow: /\n\n\
@@ -420,7 +484,7 @@ pub async fn robots_txt() -> (axum::http::HeaderMap, String) {
          Sitemap: {}/sitemap.xml\n",
         base_url
     );
-    
+
     (headers, content)
 }
 
@@ -436,8 +500,13 @@ pub async fn get_settings(
     let rows: Vec<(String, String)> = sqlx::query_as("SELECT key, value FROM settings")
         .fetch_all(&pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
-    
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+        })?;
+
     let mut map = serde_json::Map::new();
     for (key, value) in rows {
         let val = if value == "true" {
@@ -458,18 +527,23 @@ pub async fn update_setting(
     Json(payload): Json<UpdateSettingRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     check_auth(&headers)?;
-    
+
     if payload.key.trim().is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Key cannot be empty".to_string()));
     }
-    
+
     sqlx::query("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
         .bind(&payload.key)
         .bind(&payload.value)
         .execute(&pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
-        
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+        })?;
+
     Ok(StatusCode::OK)
 }
 
@@ -503,32 +577,44 @@ pub async fn submit_feedback(
     Json(payload): Json<SubmitFeedbackRequest>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     // Check if feedback is enabled
-    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = 'feedback_enabled'")
-        .fetch_optional(&pool)
-        .await
-        .unwrap_or(None);
+    let row: Option<(String,)> =
+        sqlx::query_as("SELECT value FROM settings WHERE key = 'feedback_enabled'")
+            .fetch_optional(&pool)
+            .await
+            .unwrap_or(None);
     let enabled = row.map(|r| r.0 == "true").unwrap_or(false);
     if !enabled {
-        return Err((StatusCode::SERVICE_UNAVAILABLE, "Feedback is disabled".to_string()));
+        return Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Feedback is disabled".to_string(),
+        ));
     }
 
     // Check allowed paths
-    let paths_row: Option<(String,)> = sqlx::query_as("SELECT value FROM settings WHERE key = 'feedback_allowed_paths'")
-        .fetch_optional(&pool)
-        .await
-        .unwrap_or(None);
+    let paths_row: Option<(String,)> =
+        sqlx::query_as("SELECT value FROM settings WHERE key = 'feedback_allowed_paths'")
+            .fetch_optional(&pool)
+            .await
+            .unwrap_or(None);
     let allowed_paths = paths_row.map(|r| r.0).unwrap_or_else(|| "*".to_string());
     if allowed_paths != "*" && !allowed_paths.trim().is_empty() {
-        let is_allowed = allowed_paths.split(',')
+        let is_allowed = allowed_paths
+            .split(',')
             .map(|s| s.trim())
             .any(|prefix| payload.route.starts_with(prefix));
         if !is_allowed {
-            return Err((StatusCode::BAD_REQUEST, "Feedback not allowed on this route".to_string()));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Feedback not allowed on this route".to_string(),
+            ));
         }
     }
 
     if payload.content.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Feedback content cannot be empty".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Feedback content cannot be empty".to_string(),
+        ));
     }
 
     let user_id = crate::auth::get_user_from_jar(&jar);
@@ -539,7 +625,12 @@ pub async fn submit_feedback(
         .bind(user_id)
         .execute(&pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+        })?;
 
     Ok(StatusCode::OK)
 }
@@ -551,16 +642,21 @@ pub async fn get_feedbacks(
     check_auth(&headers)?;
 
     let rows = sqlx::query_as::<_, FeedbackDb>(
-        "SELECT id, route, content, user_id, created_at FROM feedbacks ORDER BY created_at DESC"
+        "SELECT id, route, content, user_id, created_at FROM feedbacks ORDER BY created_at DESC",
     )
     .fetch_all(&pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+    })?;
 
     let mut response = Vec::new();
     for row in rows {
         let user = if let Some(uid) = row.user_id {
-            sqlx::query_as::<_, crate::models::User>("SELECT id, username, avatar_url FROM users WHERE id = ?")
+            sqlx::query_as::<_, crate::models::User>("SELECT * FROM users WHERE id = ?")
                 .bind(uid)
                 .fetch_optional(&pool)
                 .await
@@ -592,7 +688,12 @@ pub async fn delete_feedback(
         .bind(id)
         .execute(&pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+        })?;
 
     Ok(StatusCode::OK)
 }
@@ -601,11 +702,16 @@ pub async fn get_categories(
     State(pool): State<SqlitePool>,
 ) -> Result<Json<Vec<crate::models::Category>>, (StatusCode, String)> {
     let categories = sqlx::query_as::<_, crate::models::Category>(
-        "SELECT id, name, meta_domain, icon, description FROM categories ORDER BY name ASC"
+        "SELECT id, name, meta_domain, icon, description FROM categories ORDER BY name ASC",
     )
     .fetch_all(&pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Database error: {}", e),
+        )
+    })?;
 
     Ok(Json(categories))
 }
@@ -617,10 +723,14 @@ pub async fn create_category(
 ) -> Result<Json<crate::models::Category>, (StatusCode, String)> {
     check_auth(&headers)?;
 
-    let id = payload.name.to_lowercase().replace(' ', "-").replace(|c: char| !c.is_alphanumeric() && c != '-', "");
+    let id = payload
+        .name
+        .to_lowercase()
+        .replace(' ', "-")
+        .replace(|c: char| !c.is_alphanumeric() && c != '-', "");
 
     sqlx::query(
-        "INSERT INTO categories (id, name, meta_domain, icon, description) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO categories (id, name, meta_domain, icon, description) VALUES (?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(&payload.name)
@@ -629,7 +739,12 @@ pub async fn create_category(
     .bind(&payload.description)
     .execute(&pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to insert category: {}", e)))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Failed to insert category: {}", e),
+        )
+    })?;
 
     let category = crate::models::Category {
         id,

@@ -1,14 +1,14 @@
 use axum::{
+    Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::{IntoResponse, Redirect},
-    Json,
 };
+use axum_extra::extract::cookie::CookieJar;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
-use axum_extra::extract::cookie::CookieJar;
 
 use crate::models::{CheckoutRequest, CheckoutResponse, OrderDb, ProductDb};
 
@@ -65,14 +65,17 @@ pub async fn checkout(
     let user_id = crate::auth::get_user_from_jar(&jar)
         .ok_or((StatusCode::UNAUTHORIZED, "Not logged in".to_string()))?;
 
-    let user = sqlx::query_as::<_, crate::models::User>("SELECT id, username, avatar_url, email FROM users WHERE id = ?")
+    let user = sqlx::query_as::<_, crate::models::User>("SELECT * FROM users WHERE id = ?")
         .bind(user_id)
         .fetch_optional(&pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .ok_or((StatusCode::NOT_FOUND, "User not found".to_string()))?;
 
-    let email = user.email.ok_or((StatusCode::BAD_REQUEST, "User has no email address".to_string()))?;
+    let email = user.email.ok_or((
+        StatusCode::BAD_REQUEST,
+        "User has no email address".to_string(),
+    ))?;
 
     let product = sqlx::query_as::<_, ProductDb>(
         "SELECT id, title, description, price, features, tags, thumbnail_url, photos, type, metadata, file_path FROM products WHERE id = ?"
@@ -88,7 +91,7 @@ pub async fn checkout(
 
     if payload.gateway == "zarinpal" {
         let price_db: Option<(f64,)> = sqlx::query_as(
-            "SELECT price FROM product_translations WHERE product_id = ? AND language = 'fa'"
+            "SELECT price FROM product_translations WHERE product_id = ? AND language = 'fa'",
         )
         .bind(&product.id)
         .fetch_optional(&pool)
@@ -97,7 +100,10 @@ pub async fn checkout(
 
         let amount = price_db.map(|p| p.0).unwrap_or(0.0);
         if amount <= 0.0 {
-            return Err((StatusCode::BAD_REQUEST, "Product price not defined in Tomans".to_string()));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Product price not defined in Tomans".to_string(),
+            ));
         }
 
         sqlx::query(
@@ -112,7 +118,8 @@ pub async fn checkout(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-        let merchant_id = env::var("ZARINPAL_MERCHANT_ID").unwrap_or_else(|_| "sandbox".to_string());
+        let merchant_id =
+            env::var("ZARINPAL_MERCHANT_ID").unwrap_or_else(|_| "sandbox".to_string());
         let is_sandbox = merchant_id == "sandbox";
         let zarinpal_merchant = if is_sandbox {
             "00000000-0000-0000-0000-000000000000".to_string()
@@ -129,7 +136,8 @@ pub async fn checkout(
         let callback_url = format!("{}/api/payments/verify/zarinpal", host_url);
 
         let client = reqwest::Client::new();
-        let res = client.post(req_url)
+        let res = client
+            .post(req_url)
             .json(&ZarinPalRequest {
                 merchant_id: zarinpal_merchant,
                 amount: amount as i64,
@@ -138,20 +146,26 @@ pub async fn checkout(
             })
             .send()
             .await
-            .map_err(|e| (StatusCode::BAD_GATEWAY, format!("ZarinPal request failed: {}", e)))?;
-
-        let body: serde_json::Value = res.json()
-            .await
-            .map_err(|e| (StatusCode::BAD_GATEWAY, format!("ZarinPal response parse error: {}", e)))?;
-
-        let authority = body["data"]["authority"]
-            .as_str()
-            .ok_or_else(|| {
-                let err_msg = body["errors"]["message"]
-                    .as_str()
-                    .unwrap_or("Failed to get ZarinPal authority");
-                (StatusCode::BAD_GATEWAY, err_msg.to_string())
+            .map_err(|e| {
+                (
+                    StatusCode::BAD_GATEWAY,
+                    format!("ZarinPal request failed: {}", e),
+                )
             })?;
+
+        let body: serde_json::Value = res.json().await.map_err(|e| {
+            (
+                StatusCode::BAD_GATEWAY,
+                format!("ZarinPal response parse error: {}", e),
+            )
+        })?;
+
+        let authority = body["data"]["authority"].as_str().ok_or_else(|| {
+            let err_msg = body["errors"]["message"]
+                .as_str()
+                .unwrap_or("Failed to get ZarinPal authority");
+            (StatusCode::BAD_GATEWAY, err_msg.to_string())
+        })?;
 
         sqlx::query("UPDATE orders SET ref_id = ? WHERE id = ?")
             .bind(authority)
@@ -167,10 +181,9 @@ pub async fn checkout(
         };
 
         Ok(Json(CheckoutResponse { redirect_url }))
-
     } else if payload.gateway == "crypto" {
         let price_db: Option<(f64,)> = sqlx::query_as(
-            "SELECT price FROM product_translations WHERE product_id = ? AND language = 'en'"
+            "SELECT price FROM product_translations WHERE product_id = ? AND language = 'en'",
         )
         .bind(&product.id)
         .fetch_optional(&pool)
@@ -179,7 +192,10 @@ pub async fn checkout(
 
         let amount = price_db.map(|p| p.0).unwrap_or(0.0);
         if amount <= 0.0 {
-            return Err((StatusCode::BAD_REQUEST, "Product price not defined in USD".to_string()));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Product price not defined in USD".to_string(),
+            ));
         }
 
         sqlx::query(
@@ -194,14 +210,20 @@ pub async fn checkout(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-        let api_key = env::var("NOWPAYMENTS_API_KEY").unwrap_or_else(|_| "sandbox".to_string());
-        if api_key == "sandbox" {
-            let redirect_url = format!("{}/api/payments/verify/crypto/mock?orderId={}", host_url, order_id);
+        let sandbox = crate::handlers::is_under_maintenance(&pool, "payments_sandbox").await;
+        if sandbox {
+            let redirect_url = format!(
+                "{}/api/payments/verify/crypto/mock?orderId={}",
+                host_url, order_id
+            );
             return Ok(Json(CheckoutResponse { redirect_url }));
         }
 
+        let api_key = env::var("NOWPAYMENTS_API_KEY").unwrap_or_else(|_| "sandbox".to_string());
+
         let client = reqwest::Client::new();
-        let res = client.post("https://api.nowpayments.io/v1/invoice")
+        let res = client
+            .post("https://api.nowpayments.io/v1/invoice")
             .header("x-api-key", api_key)
             .json(&NOWPaymentsInvoiceRequest {
                 price_amount: amount,
@@ -209,19 +231,31 @@ pub async fn checkout(
                 order_id: order_id.clone(),
                 order_description: format!("Purchase {}", product.id),
                 ipn_callback_url: format!("{}/api/payments/verify/crypto", host_url),
-                success_url: format!("{}/store/checkout/verify?status=success&orderId={}", host_url, order_id),
+                success_url: format!(
+                    "{}/store/checkout/verify?status=success&orderId={}",
+                    host_url, order_id
+                ),
                 cancel_url: format!("{}/store", host_url),
             })
             .send()
             .await
-            .map_err(|e| (StatusCode::BAD_GATEWAY, format!("NOWPayments request failed: {}", e)))?;
+            .map_err(|e| {
+                (
+                    StatusCode::BAD_GATEWAY,
+                    format!("NOWPayments request failed: {}", e),
+                )
+            })?;
 
-        let np_res: NOWPaymentsInvoiceResponse = res.json()
-            .await
-            .map_err(|e| (StatusCode::BAD_GATEWAY, format!("NOWPayments parse error: {}", e)))?;
+        let np_res: NOWPaymentsInvoiceResponse = res.json().await.map_err(|e| {
+            (
+                StatusCode::BAD_GATEWAY,
+                format!("NOWPayments parse error: {}", e),
+            )
+        })?;
 
-        Ok(Json(CheckoutResponse { redirect_url: np_res.invoice_url }))
-
+        Ok(Json(CheckoutResponse {
+            redirect_url: np_res.invoice_url,
+        }))
     } else {
         Err((StatusCode::BAD_REQUEST, "Unsupported gateway".to_string()))
     }
@@ -241,15 +275,25 @@ pub async fn verify_zarinpal(
 
     let order = match order {
         Ok(Some(o)) => o,
-        _ => return Redirect::to(&format!("{}/store/checkout/verify?status=failure&reason=not_found", host_url)),
+        _ => {
+            return Redirect::to(&format!(
+                "{}/store/checkout/verify?status=failure&reason=not_found",
+                host_url
+            ));
+        }
     };
 
     if params.status != "OK" {
-        let _ = sqlx::query("UPDATE orders SET status = 'failed', error_reason = 'Canceled by user' WHERE id = ?")
-            .bind(&order.id)
-            .execute(&pool)
-            .await;
-        return Redirect::to(&format!("{}/store/checkout/verify?status=failure&reason=canceled", host_url));
+        let _ = sqlx::query(
+            "UPDATE orders SET status = 'failed', error_reason = 'Canceled by user' WHERE id = ?",
+        )
+        .bind(&order.id)
+        .execute(&pool)
+        .await;
+        return Redirect::to(&format!(
+            "{}/store/checkout/verify?status=failure&reason=canceled",
+            host_url
+        ));
     }
 
     let merchant_id = env::var("ZARINPAL_MERCHANT_ID").unwrap_or_else(|_| "sandbox".to_string());
@@ -267,7 +311,8 @@ pub async fn verify_zarinpal(
     };
 
     let client = reqwest::Client::new();
-    let res = client.post(verify_url)
+    let res = client
+        .post(verify_url)
         .json(&ZarinPalVerifyRequest {
             merchant_id: zarinpal_merchant,
             amount: order.amount as i64,
@@ -283,7 +328,12 @@ pub async fn verify_zarinpal(
                 if let Some(code) = body["data"]["code"].as_i64() {
                     code == 100 || code == 101
                 } else {
-                    error_msg = Some(body["errors"]["message"].as_str().unwrap_or("Payment declined by gateway").to_string());
+                    error_msg = Some(
+                        body["errors"]["message"]
+                            .as_str()
+                            .unwrap_or("Payment declined by gateway")
+                            .to_string(),
+                    );
                     false
                 }
             } else {
@@ -303,7 +353,11 @@ pub async fn verify_zarinpal(
             .execute(&pool)
             .await;
 
-        let exp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 86400;
+        let exp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as usize
+            + 86400;
         let claims = crate::products::DownloadClaims {
             sub: order.id.clone(),
             exp,
@@ -312,9 +366,13 @@ pub async fn verify_zarinpal(
             &jsonwebtoken::Header::default(),
             &claims,
             &jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
-        ).unwrap_or_default();
+        )
+        .unwrap_or_default();
 
-        Redirect::to(&format!("{}/store/checkout/verify?status=success&orderId={}&token={}", host_url, order.id, token))
+        Redirect::to(&format!(
+            "{}/store/checkout/verify?status=success&orderId={}&token={}",
+            host_url, order.id, token
+        ))
     } else {
         let reason = error_msg.unwrap_or_else(|| "Payment declined".to_string());
         let _ = sqlx::query("UPDATE orders SET status = 'failed', error_reason = ? WHERE id = ?")
@@ -322,7 +380,10 @@ pub async fn verify_zarinpal(
             .bind(&order.id)
             .execute(&pool)
             .await;
-        Redirect::to(&format!("{}/store/checkout/verify?status=failure&reason=declined", host_url))
+        Redirect::to(&format!(
+            "{}/store/checkout/verify?status=failure&reason=declined",
+            host_url
+        ))
     }
 }
 
@@ -350,16 +411,28 @@ pub async fn verify_crypto(
 pub async fn verify_crypto_mock(
     State(pool): State<SqlitePool>,
     Query(params): Query<std::collections::HashMap<String, String>>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let sandbox = crate::handlers::is_under_maintenance(&pool, "payments_sandbox").await;
+    if !sandbox {
+        return Err((StatusCode::FORBIDDEN, "Mock gateway disabled".to_string()));
+    }
     let host_url = env::var("HOST_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
     if let Some(order_id) = params.get("orderId") {
         let _ = sqlx::query("UPDATE orders SET status = 'completed' WHERE id = ?")
             .bind(order_id)
             .execute(&pool)
             .await;
-        Redirect::to(&format!("{}/store/checkout/verify?status=success&orderId={}", host_url, order_id))
+        Ok(Redirect::to(&format!(
+            "{}/store/checkout/verify?status=success&orderId={}",
+            host_url, order_id
+        ))
+        .into_response())
     } else {
-        Redirect::to(&format!("{}/store/checkout/verify?status=failure&reason=not_found", host_url))
+        Ok(Redirect::to(&format!(
+            "{}/store/checkout/verify?status=failure&reason=not_found",
+            host_url
+        ))
+        .into_response())
     }
 }
 
@@ -383,11 +456,18 @@ pub async fn get_order_token(
     }
 
     if order.status != "completed" {
-        return Err((StatusCode::PAYMENT_REQUIRED, "Order is not completed".to_string()));
+        return Err((
+            StatusCode::PAYMENT_REQUIRED,
+            "Order is not completed".to_string(),
+        ));
     }
 
     let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| "secret".to_string());
-    let exp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 86400;
+    let exp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as usize
+        + 86400;
     let claims = crate::products::DownloadClaims {
         sub: order.id.clone(),
         exp,
@@ -396,7 +476,8 @@ pub async fn get_order_token(
         &jsonwebtoken::Header::default(),
         &claims,
         &jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
-    ).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    )
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     Ok(Json(serde_json::json!({ "token": token })))
 }
@@ -454,7 +535,11 @@ pub async fn my_downloads(
         let t_en = order.title_en.unwrap_or_else(|| "Product".to_string());
         let t_fa = order.title_fa.unwrap_or_else(|| "محصول".to_string());
 
-        let exp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 86400;
+        let exp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as usize
+            + 86400;
         let claims = crate::products::DownloadClaims {
             sub: order.id.clone(),
             exp,
@@ -463,7 +548,8 @@ pub async fn my_downloads(
             &jsonwebtoken::Header::default(),
             &claims,
             &jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
-        ).unwrap_or_default();
+        )
+        .unwrap_or_default();
 
         let download_url = format!("/api/downloads/{}?token={}", order.id, token);
 
@@ -497,8 +583,11 @@ mod tests {
                 username TEXT NOT NULL,
                 avatar_url TEXT NOT NULL,
                 email TEXT UNIQUE
-            )"
-        ).execute(&pool).await.unwrap();
+            )",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
 
         sqlx::query(
             "CREATE TABLE orders (
@@ -513,8 +602,11 @@ mod tests {
                 ref_id TEXT,
                 error_reason TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )"
-        ).execute(&pool).await.unwrap();
+            )",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
 
         sqlx::query(
             "CREATE TABLE product_translations (
@@ -525,8 +617,26 @@ mod tests {
                 features TEXT NOT NULL,
                 price REAL NOT NULL DEFAULT 0.0,
                 PRIMARY KEY (product_id, language)
-            )"
-        ).execute(&pool).await.unwrap();
+            )",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "CREATE TABLE settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query("INSERT INTO settings (key, value) VALUES ('payments_sandbox', 'true')")
+            .execute(&pool)
+            .await
+            .unwrap();
 
         pool
     }
@@ -541,12 +651,36 @@ mod tests {
         let mut params = std::collections::HashMap::new();
         params.insert("orderId".to_string(), "order123".to_string());
 
-        let res = verify_crypto_mock(State(pool.clone()), Query(params)).await.into_response();
+        let res = verify_crypto_mock(State(pool.clone()), Query(params))
+            .await
+            .unwrap()
+            .into_response();
         assert_eq!(res.status(), StatusCode::SEE_OTHER); // Redirect status
 
         let order: OrderDb = sqlx::query_as("SELECT * FROM orders WHERE id = 'order123'")
-            .fetch_one(&pool).await.unwrap();
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(order.status, "completed");
+    }
+
+    #[tokio::test]
+    async fn test_verify_crypto_mock_production() {
+        let pool = setup_test_db().await;
+        // Use database settings instead of modifying environment
+        sqlx::query("UPDATE settings SET value = 'false' WHERE key = 'payments_sandbox'")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let mut params = std::collections::HashMap::new();
+        params.insert("orderId".to_string(), "order123".to_string());
+
+        let res = verify_crypto_mock(State(pool), Query(params)).await;
+        assert!(res.is_err());
+        let (status, msg) = res.err().unwrap();
+        assert_eq!(status, StatusCode::FORBIDDEN);
+        assert_eq!(msg, "Mock gateway disabled");
     }
 
     #[tokio::test]
@@ -579,13 +713,16 @@ mod tests {
             sub: 2,
             exp: 100000000000,
         };
+        let jwt_secret = env::var("JWT_SECRET")
+            .or_else(|_| env::var("ADMIN_SECRET"))
+            .unwrap_or_else(|_| "secret".to_string());
         let token = jsonwebtoken::encode(
             &jsonwebtoken::Header::default(),
             &claims,
-            &jsonwebtoken::EncodingKey::from_secret("secret".as_bytes()),
-        ).unwrap();
+            &jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
+        )
+        .unwrap();
 
-        unsafe { std::env::set_var("JWT_SECRET", "secret"); }
         let jar = CookieJar::new().add(axum_extra::extract::cookie::Cookie::new("token", token));
 
         let res = get_order_token(State(pool), jar, Path("order123".to_string())).await;
@@ -610,13 +747,16 @@ mod tests {
             sub: 1,
             exp: 100000000000,
         };
+        let jwt_secret = env::var("JWT_SECRET")
+            .or_else(|_| env::var("ADMIN_SECRET"))
+            .unwrap_or_else(|_| "secret".to_string());
         let token = jsonwebtoken::encode(
             &jsonwebtoken::Header::default(),
             &claims,
-            &jsonwebtoken::EncodingKey::from_secret("secret".as_bytes()),
-        ).unwrap();
+            &jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
+        )
+        .unwrap();
 
-        unsafe { std::env::set_var("JWT_SECRET", "secret"); }
         let jar = CookieJar::new().add(axum_extra::extract::cookie::Cookie::new("token", token));
 
         let res = get_order_token(State(pool), jar, Path("order123".to_string())).await;
@@ -656,13 +796,16 @@ mod tests {
             sub: 1,
             exp: 100000000000,
         };
+        let jwt_secret = env::var("JWT_SECRET")
+            .or_else(|_| env::var("ADMIN_SECRET"))
+            .unwrap_or_else(|_| "secret".to_string());
         let token = jsonwebtoken::encode(
             &jsonwebtoken::Header::default(),
             &claims,
-            &jsonwebtoken::EncodingKey::from_secret("secret".as_bytes()),
-        ).unwrap();
+            &jsonwebtoken::EncodingKey::from_secret(jwt_secret.as_bytes()),
+        )
+        .unwrap();
 
-        unsafe { std::env::set_var("JWT_SECRET", "secret"); }
         let jar = CookieJar::new().add(axum_extra::extract::cookie::Cookie::new("token", token));
 
         let res = my_downloads(State(pool), jar).await;

@@ -1,21 +1,15 @@
+use crate::models::{
+    CreateProductRequest, ProductDb, ProductResponse, ProductTranslationDb,
+    ProductTranslationResponse, UpdateProductRequest,
+};
 use axum::{
-    extract::{Path, State, Query},
+    Json,
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde::Deserialize;
 use sqlx::SqlitePool;
-use crate::models::{
-    ProductDb, ProductResponse, CreateProductRequest, UpdateProductRequest,
-    ProductTranslationDb, ProductTranslationResponse
-};
-
-#[derive(Deserialize)]
-pub struct ProductFilter {
-    pub tag: Option<String>,
-}
-
 
 
 pub async fn get_products(
@@ -23,13 +17,17 @@ pub async fn get_products(
     State(pool): State<SqlitePool>,
     Query(params): Query<Vec<(String, String)>>,
 ) -> Result<Json<Vec<ProductResponse>>, (StatusCode, String)> {
-    if crate::handlers::is_under_maintenance(&pool, "store_maintenance").await || crate::handlers::is_under_maintenance(&pool, "site_maintenance").await {
-        if crate::handlers::check_auth(&headers).is_err() {
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "Store is under maintenance".to_string()));
+    if (crate::handlers::is_under_maintenance(&pool, "store_maintenance").await
+        || crate::handlers::is_under_maintenance(&pool, "site_maintenance").await)
+        && crate::handlers::check_auth(&headers).is_err() {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Store is under maintenance".to_string(),
+            ));
         }
-    }
 
-    let tags: Vec<String> = params.into_iter()
+    let tags: Vec<String> = params
+        .into_iter()
         .filter_map(|(k, v)| if k == "tag" { Some(v) } else { None })
         .collect();
 
@@ -46,7 +44,8 @@ pub async fn get_products(
     let mut products = Vec::new();
     for db in products_db {
         let db_tags: Vec<String> = serde_json::from_str(&db.tags).unwrap_or_default();
-        let photos: Vec<String> = serde_json::from_str(db.photos.as_deref().unwrap_or("[]")).unwrap_or_default();
+        let photos: Vec<String> =
+            serde_json::from_str(db.photos.as_deref().unwrap_or("[]")).unwrap_or_default();
 
         let mut should_include = true;
         for t in &tags {
@@ -60,7 +59,8 @@ pub async fn get_products(
             let mut product_translations = Vec::new();
             for t in &translations_db {
                 if t.product_id == db.id {
-                    let features: Vec<String> = serde_json::from_str(&t.features).unwrap_or_default();
+                    let features: Vec<String> =
+                        serde_json::from_str(&t.features).unwrap_or_default();
                     product_translations.push(ProductTranslationResponse {
                         language: t.language.clone(),
                         title: t.title.clone(),
@@ -91,11 +91,14 @@ pub async fn get_product(
     State(pool): State<SqlitePool>,
     Path(id): Path<String>,
 ) -> Result<Json<ProductResponse>, (StatusCode, String)> {
-    if crate::handlers::is_under_maintenance(&pool, "store_maintenance").await || crate::handlers::is_under_maintenance(&pool, "site_maintenance").await {
-        if crate::handlers::check_auth(&headers).is_err() {
-            return Err((StatusCode::SERVICE_UNAVAILABLE, "Store is under maintenance".to_string()));
+    if (crate::handlers::is_under_maintenance(&pool, "store_maintenance").await
+        || crate::handlers::is_under_maintenance(&pool, "site_maintenance").await)
+        && crate::handlers::check_auth(&headers).is_err() {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Store is under maintenance".to_string(),
+            ));
         }
-    }
 
     let db = sqlx::query_as::<_, ProductDb>("SELECT id, title, description, price, features, tags, thumbnail_url, photos, type, metadata, file_path FROM products WHERE id = ?")
         .bind(&id)
@@ -106,7 +109,8 @@ pub async fn get_product(
     match db {
         Some(db) => {
             let tags: Vec<String> = serde_json::from_str(&db.tags).unwrap_or_default();
-            let photos: Vec<String> = serde_json::from_str(db.photos.as_deref().unwrap_or("[]")).unwrap_or_default();
+            let photos: Vec<String> =
+                serde_json::from_str(db.photos.as_deref().unwrap_or("[]")).unwrap_or_default();
 
             let db_translations = sqlx::query_as::<_, ProductTranslationDb>("SELECT product_id, language, title, description, features, price FROM product_translations WHERE product_id = ?")
                 .bind(&id)
@@ -136,7 +140,7 @@ pub async fn get_product(
                 metadata: db.metadata.and_then(|m| serde_json::from_str(&m).ok()),
                 file_path: db.file_path,
             }))
-        },
+        }
         None => Err((StatusCode::NOT_FOUND, "Product not found".to_string())),
     }
 }
@@ -149,22 +153,37 @@ pub async fn create_product(
     crate::handlers::check_auth(&headers)?;
 
     if payload.translations.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "At least one translation is required".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "At least one translation is required".to_string(),
+        ));
     }
     for t in &payload.translations {
         if t.title.trim().is_empty() || t.description.trim().is_empty() {
-            return Err((StatusCode::BAD_REQUEST, "Title and description are required".to_string()));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Title and description are required".to_string(),
+            ));
         }
         if t.price < 0.0 {
-            return Err((StatusCode::BAD_REQUEST, "Price cannot be negative".to_string()));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                "Price cannot be negative".to_string(),
+            ));
         }
     }
 
-    let id = payload.id.clone().unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
+    let id = payload
+        .id
+        .clone()
+        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
     let tags_json = serde_json::to_string(&payload.tags).unwrap_or_else(|_| "[]".to_string());
     let photos_json = serde_json::to_string(&payload.photos).unwrap_or_else(|_| "[]".to_string());
-    let metadata_str = payload.metadata.as_ref().and_then(|m| serde_json::to_string(m).ok());
-    
+    let metadata_str = payload
+        .metadata
+        .as_ref()
+        .and_then(|m| serde_json::to_string(m).ok());
+
     // Insert dormant fields as empty/0.0 to satisfy NOT NULL constraints
     sqlx::query("INSERT INTO products (id, title, description, price, features, tags, thumbnail_url, photos, type, metadata, file_path) VALUES (?, '', '', 0.0, '[]', ?, ?, ?, ?, ?, ?)")
         .bind(&id)
@@ -177,11 +196,10 @@ pub async fn create_product(
         .execute(&pool)
         .await
         .map_err(|e| {
-            if let sqlx::Error::Database(ref db_err) = e {
-                if db_err.is_unique_violation() {
+            if let sqlx::Error::Database(ref db_err) = e
+                && db_err.is_unique_violation() {
                     return (StatusCode::CONFLICT, "Product with this ID already exists".to_string());
                 }
-            }
             (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
         })?;
 
@@ -198,7 +216,7 @@ pub async fn create_product(
             .execute(&pool)
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-        
+
         response_translations.push(ProductTranslationResponse {
             language: t.language,
             title: t.title,
@@ -230,7 +248,10 @@ pub async fn update_product(
 
     let tags_json = serde_json::to_string(&payload.tags).unwrap_or_else(|_| "[]".to_string());
     let photos_json = serde_json::to_string(&payload.photos).unwrap_or_else(|_| "[]".to_string());
-    let metadata_str = payload.metadata.as_ref().and_then(|m| serde_json::to_string(m).ok());
+    let metadata_str = payload
+        .metadata
+        .as_ref()
+        .and_then(|m| serde_json::to_string(m).ok());
 
     let result = sqlx::query("UPDATE products SET tags = ?, thumbnail_url = ?, photos = ?, type = ?, metadata = ?, file_path = ? WHERE id = ?")
         .bind(&tags_json)
@@ -268,7 +289,7 @@ pub async fn update_product(
             .execute(&pool)
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-            
+
         response_translations.push(ProductTranslationResponse {
             language: t.language,
             title: t.title,
@@ -296,7 +317,7 @@ pub async fn delete_product(
     Path(id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     crate::handlers::check_auth(&headers)?;
-    
+
     // Deleting from products will cascade to product_translations due to ON DELETE CASCADE
     let result = sqlx::query("DELETE FROM products WHERE id = ?")
         .bind(&id)
@@ -327,7 +348,7 @@ pub async fn download_file(
     Path(order_id): Path<String>,
     Query(params): Query<DownloadParams>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
-    use jsonwebtoken::{decode, DecodingKey, Validation};
+    use jsonwebtoken::{DecodingKey, Validation, decode};
     use std::env;
 
     let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| "secret".to_string());
@@ -335,23 +356,33 @@ pub async fn download_file(
         &params.token,
         &DecodingKey::from_secret(jwt_secret.as_bytes()),
         &Validation::default(),
-    ).map_err(|e| (StatusCode::UNAUTHORIZED, format!("Invalid token: {}", e)))?;
+    )
+    .map_err(|e| (StatusCode::UNAUTHORIZED, format!("Invalid token: {}", e)))?;
 
     if token_data.claims.sub != order_id {
-        return Err((StatusCode::UNAUTHORIZED, "Token and order do not match".to_string()));
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            "Token and order do not match".to_string(),
+        ));
     }
 
-    let order = sqlx::query_as::<_, crate::models::OrderDb>(
-        "SELECT * FROM orders WHERE id = ?"
-    )
-    .bind(&order_id)
-    .fetch_optional(&pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Database error: {}", e)))?
-    .ok_or((StatusCode::NOT_FOUND, "Order not found".to_string()))?;
+    let order = sqlx::query_as::<_, crate::models::OrderDb>("SELECT * FROM orders WHERE id = ?")
+        .bind(&order_id)
+        .fetch_optional(&pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Database error: {}", e),
+            )
+        })?
+        .ok_or((StatusCode::NOT_FOUND, "Order not found".to_string()))?;
 
     if order.status != "completed" {
-        return Err((StatusCode::PAYMENT_REQUIRED, "Order is not completed".to_string()));
+        return Err((
+            StatusCode::PAYMENT_REQUIRED,
+            "Order is not completed".to_string(),
+        ));
     }
 
     let product = sqlx::query_as::<_, crate::models::ProductDb>(
@@ -371,21 +402,28 @@ pub async fn download_file(
     let secure_dir = std::path::Path::new("digital_products");
     let target_path = secure_dir.join(&file_path_str);
 
-    let canonical_secure = secure_dir.canonicalize()
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("System error: {}", e)))?;
-    let canonical_target = target_path.canonicalize()
+    let canonical_secure = secure_dir.canonicalize().map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("System error: {}", e),
+        )
+    })?;
+    let canonical_target = target_path
+        .canonicalize()
         .map_err(|_| (StatusCode::NOT_FOUND, "File not found".to_string()))?;
 
     if !canonical_target.starts_with(&canonical_secure) {
         return Err((StatusCode::FORBIDDEN, "Access denied".to_string()));
     }
 
-    let file = tokio::fs::File::open(&canonical_target).await
+    let file = tokio::fs::File::open(&canonical_target)
+        .await
         .map_err(|e| (StatusCode::NOT_FOUND, format!("File not found: {}", e)))?;
     let stream = tokio_util::io::ReaderStream::new(file);
     let body = axum::body::Body::from_stream(stream);
 
-    let filename = canonical_target.file_name()
+    let filename = canonical_target
+        .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("download.zip");
 
@@ -397,8 +435,12 @@ pub async fn download_file(
     );
     response.headers_mut().insert(
         axum::http::header::CONTENT_DISPOSITION,
-        axum::http::HeaderValue::from_str(&disposition)
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Header error: {}", e)))?,
+        axum::http::HeaderValue::from_str(&disposition).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Header error: {}", e),
+            )
+        })?,
     );
 
     Ok(response)
@@ -407,7 +449,7 @@ pub async fn download_file(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jsonwebtoken::{encode, EncodingKey, Header};
+    use jsonwebtoken::{EncodingKey, Header, encode};
     use sqlx::sqlite::SqlitePoolOptions;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -423,8 +465,11 @@ mod tests {
                 username TEXT NOT NULL,
                 avatar_url TEXT NOT NULL,
                 email TEXT UNIQUE
-            )"
-        ).execute(&pool).await.unwrap();
+            )",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
 
         sqlx::query(
             "CREATE TABLE products (
@@ -439,8 +484,11 @@ mod tests {
                 type TEXT DEFAULT 'latex',
                 metadata TEXT,
                 file_path TEXT
-            )"
-        ).execute(&pool).await.unwrap();
+            )",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
 
         sqlx::query(
             "CREATE TABLE orders (
@@ -455,8 +503,11 @@ mod tests {
                 ref_id TEXT,
                 error_reason TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )"
-        ).execute(&pool).await.unwrap();
+            )",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
 
         pool
     }
@@ -479,24 +530,29 @@ mod tests {
             .execute(&pool).await.unwrap();
 
         // Generate token
-        let exp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 3600;
+        let exp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as usize
+            + 3600;
         let claims = DownloadClaims {
             sub: "order123".to_string(),
             exp,
         };
+        let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "secret".to_string());
         let token = encode(
             &Header::default(),
             &claims,
-            &EncodingKey::from_secret("secret".as_bytes()),
-        ).unwrap();
-
-        unsafe { std::env::set_var("JWT_SECRET", "secret"); }
+            &EncodingKey::from_secret(jwt_secret.as_bytes()),
+        )
+        .unwrap();
 
         let res = download_file(
             State(pool),
             Path("order123".to_string()),
             Query(DownloadParams { token }),
-        ).await;
+        )
+        .await;
 
         assert!(res.is_ok());
 
@@ -510,8 +566,11 @@ mod tests {
         let res = download_file(
             State(pool),
             Path("order123".to_string()),
-            Query(DownloadParams { token: "invalid.token.here".to_string() }),
-        ).await;
+            Query(DownloadParams {
+                token: "invalid.token.here".to_string(),
+            }),
+        )
+        .await;
 
         assert!(res.is_err());
         let (status, msg) = res.err().unwrap();
@@ -523,24 +582,29 @@ mod tests {
     async fn test_download_file_non_matching_token() {
         let pool = setup_test_db().await;
         // Generate token for different order
-        let exp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() as usize + 3600;
+        let exp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as usize
+            + 3600;
         let claims = DownloadClaims {
             sub: "other_order".to_string(),
             exp,
         };
+        let jwt_secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "secret".to_string());
         let token = encode(
             &Header::default(),
             &claims,
-            &EncodingKey::from_secret("secret".as_bytes()),
-        ).unwrap();
-
-        unsafe { std::env::set_var("JWT_SECRET", "secret"); }
+            &EncodingKey::from_secret(jwt_secret.as_bytes()),
+        )
+        .unwrap();
 
         let res = download_file(
             State(pool),
             Path("order123".to_string()),
             Query(DownloadParams { token }),
-        ).await;
+        )
+        .await;
 
         assert!(res.is_err());
         let (status, msg) = res.err().unwrap();
