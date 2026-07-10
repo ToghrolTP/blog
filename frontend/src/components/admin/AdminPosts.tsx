@@ -120,7 +120,8 @@ export function AdminPosts({
       tags: typeof editingPost.tags === 'string' ? (editingPost.tags as string).split(',').map(s => s.trim()) : (editingPost.tags || []),
       thumbnailUrl: editingPost.thumbnailUrl || null,
       translations: (editingPost.translations || []).filter((t: any) => t.title && t.content), 
-      type: editingPost.type || 'linux'
+      type: editingPost.type || 'linux',
+      isDraft: editingPost.isDraft ?? false
     };
 
     try {
@@ -137,13 +138,14 @@ export function AdminPosts({
         const savedPost = await res.json();
         if (isCreatingMode) {
           setPosts([savedPost, ...posts]);
+          setIsCreatingMode(false);
         } else {
           setPosts(posts.map(p => p.id === originalPostId ? savedPost : p));
         }
         setSuccessMessage('Saved successfully');
         setTimeout(() => setSuccessMessage(null), 3000);
-        setEditingPost(null);
-        setOriginalPostId(null);
+        setOriginalPostId(savedPost.id);
+        setEditingPost(savedPost);
       } else {
         const errText = await res.text();
         alert(`Failed to save: ${res.status} ${errText}`);
@@ -340,6 +342,35 @@ export function AdminPosts({
                     {editingPost.thumbnailUrl && (
                       <img src={editingPost.thumbnailUrl} alt="Thumbnail preview" className="mt-3 h-24 object-contain bg-gb-bg-dark rounded border border-gb-bg-soft" />
                     )}
+                  </div>
+
+                  <div className="py-4 border-t border-gb-bg-soft/50">
+                    <label className="block text-sm mb-2 text-gb-fg-dark font-mono">Publish Status</label>
+                    <div className="flex items-center gap-3 p-4 bg-gb-bg-soft/20 border border-gb-bg-soft">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={editingPost.isDraft ?? false}
+                        onClick={() => setEditingPost({ ...editingPost, isDraft: !editingPost.isDraft })}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${
+                          editingPost.isDraft ? 'bg-gb-orange-light' : 'bg-gb-green-light'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-gb-fg transition-transform ${
+                            editingPost.isDraft ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <div className="flex flex-col">
+                        <span className="text-xs font-bold text-gb-fg font-mono">
+                          {editingPost.isDraft ? 'Draft (Admin Only)' : 'Published (Publicly Visible)'}
+                        </span>
+                        <span className="text-[10px] text-gb-fg-dark font-mono">
+                          {editingPost.isDraft ? 'This post is currently hidden from main blog listings.' : 'This post is visible to all visitors and indexed by SEO.'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -795,6 +826,11 @@ npm install
                 </p>
                 
                 <div className="text-[10px] text-gb-fg-dark/60 font-mono mt-3 flex items-center gap-3">
+                  {post.isDraft && (
+                    <span className="px-1.5 py-0.5 bg-gb-orange-light/20 text-gb-orange-light border border-gb-orange-light/35 text-[9px] font-bold">
+                      DRAFT
+                    </span>
+                  )}
                   <span>{post.date}</span>
                   <span>•</span>
                   <span className="font-semibold text-gb-yellow-light/80">{post.id}</span>

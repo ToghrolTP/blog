@@ -14,7 +14,8 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>
             content TEXT,
             upvotes INTEGER NOT NULL DEFAULT 0,
             thumbnail_url TEXT,
-            type TEXT DEFAULT 'linux'
+            type TEXT DEFAULT 'linux',
+            is_draft BOOLEAN NOT NULL DEFAULT 0
         )
         "#,
     )
@@ -61,6 +62,10 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), Box<dyn std::error::Error>
         .await;
 
     let _ = sqlx::query("ALTER TABLE products ADD COLUMN metadata TEXT")
+        .execute(pool)
+        .await;
+
+    let _ = sqlx::query("ALTER TABLE posts ADD COLUMN is_draft BOOLEAN NOT NULL DEFAULT 0")
         .execute(pool)
         .await;
 

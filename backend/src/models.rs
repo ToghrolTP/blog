@@ -28,6 +28,8 @@ pub struct PostResponse {
     pub translations: Vec<PostTranslationResponse>,
     #[serde(rename = "type", default = "default_post_type_name")]
     pub type_name: String,
+    #[serde(rename = "isDraft", default)]
+    pub is_draft: bool,
 }
 
 #[derive(Debug, FromRow)]
@@ -39,6 +41,7 @@ pub struct PostDb {
     pub thumbnail_url: Option<String>,
     #[sqlx(rename = "type")]
     pub type_name: String,
+    pub is_draft: bool,
 }
 
 #[derive(Debug, FromRow)]
@@ -74,6 +77,8 @@ pub struct CreatePostRequest {
     pub translations: Vec<PostTranslationRequest>,
     #[serde(rename = "type", default = "default_post_type_name")]
     pub type_name: String,
+    #[serde(rename = "isDraft", default)]
+    pub is_draft: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -86,6 +91,8 @@ pub struct UpdatePostRequest {
     pub translations: Vec<PostTranslationRequest>,
     #[serde(rename = "type", default = "default_post_type_name")]
     pub type_name: String,
+    #[serde(rename = "isDraft", default)]
+    pub is_draft: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, FromRow)]

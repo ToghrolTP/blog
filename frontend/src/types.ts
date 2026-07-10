@@ -15,6 +15,7 @@ export interface Post {
   thumbnailUrl?: string;
   translations: PostTranslation[];
   type?: string;
+  isDraft?: boolean;
 }
 
 export interface User {

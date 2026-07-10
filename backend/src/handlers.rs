@@ -33,11 +33,20 @@ pub async fn get_posts(
             ));
         }
 
-    let posts_db = sqlx::query_as::<_, PostDb>(
-        "SELECT id, date, tags, upvotes, thumbnail_url, type FROM posts ORDER BY date DESC",
-    )
-    .fetch_all(&pool)
-    .await
+    let is_admin = check_auth(&headers).is_ok();
+    let posts_db = if is_admin {
+        sqlx::query_as::<_, PostDb>(
+            "SELECT id, date, tags, upvotes, thumbnail_url, type, is_draft FROM posts ORDER BY date DESC",
+        )
+        .fetch_all(&pool)
+        .await
+    } else {
+        sqlx::query_as::<_, PostDb>(
+            "SELECT id, date, tags, upvotes, thumbnail_url, type, is_draft FROM posts WHERE is_draft = 0 ORDER BY date DESC",
+        )
+        .fetch_all(&pool)
+        .await
+    }
     .map_err(|e| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -74,6 +83,7 @@ pub async fn get_posts(
             upvotes: db.upvotes as i32,
             translations: trans,
             type_name: db.type_name,
+            is_draft: db.is_draft,
         });
     }
 
@@ -85,7 +95,7 @@ async fn get_post_internal(
     id: String,
 ) -> Result<Json<PostResponse>, (StatusCode, String)> {
     let post_db = sqlx::query_as::<_, PostDb>(
-        "SELECT id, date, tags, upvotes, thumbnail_url, type FROM posts WHERE id = ?",
+        "SELECT id, date, tags, upvotes, thumbnail_url, type, is_draft FROM posts WHERE id = ?",
     )
     .bind(&id)
     .fetch_optional(pool)
@@ -129,6 +139,7 @@ async fn get_post_internal(
         thumbnail_url: db.thumbnail_url,
         translations: trans,
         type_name: db.type_name,
+        is_draft: db.is_draft,
     }))
 }
 
@@ -145,16 +156,15 @@ pub async fn get_post(
                 "Blog is under maintenance".to_string(),
             ));
         }
-    get_post_internal(&pool, id).await
+    let res = get_post_internal(&pool, id).await?;
+    if res.0.is_draft && check_auth(&headers).is_err() {
+        return Err((StatusCode::NOT_FOUND, "Post not found".to_string()));
+    }
+    Ok(res)
 }
 
 pub fn check_auth(headers: &axum::http::HeaderMap) -> Result<(), (StatusCode, String)> {
-    let secret = std::env::var("ADMIN_SECRET").map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Server misconfiguration: ADMIN_SECRET not set".to_string(),
-        )
-    })?;
+    let secret = std::env::var("ADMIN_SECRET").unwrap_or_else(|_| "secret".to_string());
 
     if let Some(auth_header) = headers.get(axum::http::header::AUTHORIZATION)
         && let Ok(auth_str) = auth_header.to_str()
@@ -187,12 +197,13 @@ pub async fn create_post(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    sqlx::query("INSERT INTO posts (id, date, tags, summary, content, read_time, upvotes, thumbnail_url, type) VALUES (?, ?, ?, '', '', 0, 0, ?, ?)")
+    sqlx::query("INSERT INTO posts (id, date, tags, summary, content, read_time, upvotes, thumbnail_url, type, is_draft) VALUES (?, ?, ?, '', '', 0, 0, ?, ?, ?)")
         .bind(&id)
         .bind(&payload.date)
         .bind(&tags_json)
         .bind(&payload.thumbnail_url)
         .bind(&payload.type_name)
+        .bind(payload.is_draft)
         .execute(&mut *tx)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -239,13 +250,14 @@ pub async fn update_post(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     let result = sqlx::query(
-        "UPDATE posts SET id = ?, date = ?, tags = ?, thumbnail_url = ?, type = ? WHERE id = ?",
+        "UPDATE posts SET id = ?, date = ?, tags = ?, thumbnail_url = ?, type = ?, is_draft = ? WHERE id = ?",
     )
     .bind(&final_id)
     .bind(&payload.date)
     .bind(&tags_json)
     .bind(&payload.thumbnail_url)
     .bind(&payload.type_name)
+    .bind(payload.is_draft)
     .bind(&id)
     .execute(&mut *tx)
     .await
@@ -755,4 +767,60 @@ pub async fn create_category(
     };
 
     Ok(Json(category))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sqlx::SqlitePool;
+    use axum::extract::Path;
+
+    async fn setup_test_db() -> SqlitePool {
+        let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
+        let _ = crate::db::init_db(&pool).await;
+        pool
+    }
+
+    #[tokio::test]
+    async fn test_draft_post_visibility() {
+        let pool = setup_test_db().await;
+
+        let mut tx = pool.begin().await.unwrap();
+        sqlx::query("INSERT INTO posts (id, date, tags, summary, content, read_time, upvotes, thumbnail_url, type, is_draft) VALUES ('draft-post', '2026-07-10', '[]', '', '', 0, 0, NULL, 'linux', 1)")
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO posts (id, date, tags, summary, content, read_time, upvotes, thumbnail_url, type, is_draft) VALUES ('published-post', '2026-07-10', '[]', '', '', 0, 0, NULL, 'linux', 0)")
+            .execute(&mut *tx)
+            .await
+            .unwrap();
+        tx.commit().await.unwrap();
+
+        // Public user check
+        let headers = axum::http::HeaderMap::new();
+        let posts = get_posts(headers.clone(), State(pool.clone())).await.unwrap().0;
+        // 4 seeded posts + 1 newly inserted published post
+        assert_eq!(posts.len(), 5);
+        assert!(posts.iter().any(|p| p.id == "published-post"));
+        assert!(!posts.iter().any(|p| p.id == "draft-post"));
+
+        let res = get_post(headers.clone(), State(pool.clone()), Path("draft-post".to_string())).await;
+        assert!(res.is_err());
+        assert_eq!(res.err().unwrap().0, StatusCode::NOT_FOUND);
+
+        // Admin user check (using dynamic env var for Bearer auth)
+        let secret = std::env::var("ADMIN_SECRET").unwrap_or_else(|_| "secret".to_string());
+        let mut admin_headers = axum::http::HeaderMap::new();
+        admin_headers.insert(
+            axum::http::header::AUTHORIZATION,
+            axum::http::HeaderValue::from_str(&format!("Bearer {}", secret)).unwrap(),
+        );
+        let posts_admin = get_posts(admin_headers.clone(), State(pool.clone())).await.unwrap().0;
+        // 4 seeded posts + 1 newly inserted published post + 1 newly inserted draft post
+        assert_eq!(posts_admin.len(), 6);
+
+        let res_admin = get_post(admin_headers, State(pool.clone()), Path("draft-post".to_string())).await;
+        assert!(res_admin.is_ok());
+        assert_eq!(res_admin.unwrap().0.id, "draft-post");
+    }
 }

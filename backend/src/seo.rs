@@ -94,6 +94,9 @@ pub async fn serve_seo_post(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     if let Some(post) = post {
+        if post.is_draft {
+            return Err(StatusCode::NOT_FOUND);
+        }
         let is_fa = uri.path().starts_with("/fa/");
         let target_lang = if is_fa { "fa" } else { "en" };
 
@@ -579,7 +582,7 @@ pub async fn serve_seo_home(
 
     // Fetch top 10 posts
     let posts_db = sqlx::query_as::<_, crate::models::PostDb>(
-        "SELECT id, date, tags, upvotes, thumbnail_url, type FROM posts ORDER BY date DESC LIMIT 10"
+        "SELECT id, date, tags, upvotes, thumbnail_url, type, is_draft FROM posts WHERE is_draft = 0 ORDER BY date DESC LIMIT 10"
     )
     .fetch_all(&pool)
     .await

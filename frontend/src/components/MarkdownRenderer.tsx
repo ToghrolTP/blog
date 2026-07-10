@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { CodeSnippet } from "./CodeSnippet";
+import { QuotesIcon } from "./Icons";
 
 const gruvboxStyle = {
   'code[class*="language-"]': {
@@ -195,12 +196,23 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
           const isRtl = getDir(children) === "rtl";
           return (
             <blockquote
-              className={`border-l-4 border-gb-fg-dark/40 bg-gb-bg-soft/20 p-6 rounded-none mb-6 text-gb-fg-dark italic ${
-                isRtl ? "border-l-0 border-r-4" : ""
+              className={`relative border-l-4 border-gb-orange-light/70 bg-gb-bg-soft/10 hover:bg-gb-bg-soft/20 hover:border-gb-orange-light p-6 mb-8 text-gb-fg-dark italic transition-all duration-300 [&>*:last-child]:mb-0 group ${
+                isRtl 
+                  ? "border-l-0 border-r-4 pl-6 pr-12" 
+                  : "pl-12 pr-6"
               }`}
               dir={isRtl ? "rtl" : "ltr"}
               {...props}
             >
+              {/* Quote Icon */}
+              <QuotesIcon
+                size={20}
+                className={`absolute top-6 text-gb-orange-light/40 group-hover:text-gb-orange-light/70 transition-all duration-300 ${
+                  isRtl 
+                    ? "right-4 scale-x-[-1]" 
+                    : "left-4"
+                }`}
+              />
               {children}
             </blockquote>
           );

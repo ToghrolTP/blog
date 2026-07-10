@@ -446,6 +446,8 @@ export function AdminPanel() {
                       setOriginalPostId(null);
                       if (activeTab === 'posts') {
                         setEditingPost({
+                          date: new Date().toISOString().split('T')[0],
+                          isDraft: true,
                           translations: [
                             { language: 'en', title: '', summary: '', content: '', readTime: 5 },
                             { language: 'fa', title: '', summary: '', content: '', readTime: 5 }

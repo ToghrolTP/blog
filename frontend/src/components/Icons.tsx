@@ -2,6 +2,7 @@ import { SVGProps } from 'react';
 
 import terminalWindowSvg from '../assets/icons/terminal-window.svg?raw';
 import githubLogoSvg from '../assets/icons/github-logo.svg?raw';
+import quotesSvg from '../assets/icons/quotes.svg?raw';
 
 import userSvg from '../assets/icons/user.svg?raw';
 import eyeSvg from '../assets/icons/eye.svg?raw';
@@ -116,3 +117,4 @@ export const DownloadIcon = createIcon(downloadSvg);
 export const SparkleIcon = createIcon(sparkleSvg);
 export const WarningIcon = createIcon(warningSvg);
 export const BookmarkIcon = createIcon(bookmarkSvg);
+export const QuotesIcon = createIcon(quotesSvg);
