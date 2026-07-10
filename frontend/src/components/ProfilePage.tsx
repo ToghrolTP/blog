@@ -5,6 +5,7 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
+import { DeleteAccountModal } from './DeleteAccountModal';
 import {
   UserIcon,
   CheckIcon,
@@ -46,6 +47,20 @@ export function ProfilePage({
   onNavigateToStore
 }: ProfilePageProps) {
   const { language } = useLanguage();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    const res = await fetch('/api/users/profile', {
+      method: 'DELETE',
+    });
+
+    if (res.ok) {
+      window.location.href = language === 'fa' ? '/fa' : '/';
+    } else {
+      const errText = await res.text();
+      throw new Error(errText || 'Failed to delete account');
+    }
+  };
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [templates, setTemplates] = useState<Product[]>([]);
@@ -132,7 +147,7 @@ export function ProfilePage({
   const isRtl = language === 'fa';
 
   return (
-    <div className="animate-in fade-in duration-500 max-w-5xl mx-auto px-4 pb-16" dir={isRtl ? 'rtl' : 'ltr'}>
+    <div className="animate-in fade-in duration-500 w-full pb-16" dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Page header */}
       <div className={`mb-8 font-mono text-gb-fg-dark border-gb-yellow-light py-1 ${isRtl ? 'border-r-2 pr-4' : 'border-l-2 pl-4'}`}>
         <p className="text-gb-fg text-lg font-bold">
@@ -452,6 +467,43 @@ export function ProfilePage({
           </div>
         )}
       </div>
+
+      {/* Danger Zone */}
+      <div className="mt-12 border-t border-gb-red/30 pt-8">
+        <h3 className="font-mono font-bold text-sm text-gb-red-light mb-4 flex items-center gap-2">
+          <WarningIcon className="w-4 h-4 text-gb-red-light shrink-0" /> DANGER_ZONE
+        </h3>
+        
+        <Card className="border-2 border-gb-red/30 bg-gb-bg p-6 rounded-none shadow-[4px_4px_0px_#cc241d20] hover:border-gb-red-light/50 transition-all duration-300">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h4 className="font-mono font-bold text-sm text-gb-fg">
+                {isRtl ? 'حذف حساب کاربری' : 'Delete Account'}
+              </h4>
+              <p className="text-xs text-gb-fg-dark mt-1 max-w-md">
+                {isRtl
+                  ? 'حساب کاربری شما طبق قانون حق فراموشی (GDPR) به طور کامل ناشناس خواهد شد. این عمل غیرقابل بازگشت است.'
+                  : 'Your account will be permanently anonymized under the Right to be Forgotten (GDPR). This action is irreversible.'}
+              </p>
+            </div>
+            
+            <Button
+              onClick={() => setShowDeleteModal(true)}
+              variant="danger"
+              size="sm"
+              className="cursor-pointer shrink-0"
+            >
+              {isRtl ? 'حذف حساب' : 'Delete Account'}
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      <DeleteAccountModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteAccount}
+      />
     </div>
   );
 }

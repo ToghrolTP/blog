@@ -124,7 +124,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/auth/github", get(auth::github_login))
         .route("/api/auth/github/callback", get(auth::github_callback))
         .route("/api/auth/me", get(auth::get_me))
-        .route("/api/users/profile", post(auth::update_profile))
+        .route("/api/users/profile", post(auth::update_profile).delete(auth::delete_profile))
         .route("/api/auth/logout", post(auth::logout))
         .route("/api/auth/check-email", get(auth::check_email))
         .route("/api/auth/manual", post(auth::manual_auth))

@@ -307,6 +307,95 @@ pub async fn update_profile(
     }))
 }
 
+pub async fn delete_profile(
+    State(pool): State<SqlitePool>,
+    jar: CookieJar,
+) -> Result<impl IntoResponse, (StatusCode, String)> {
+    let user_id = get_user_from_jar(&jar)
+        .ok_or((StatusCode::UNAUTHORIZED, "Not logged in".to_string()))?;
+
+    let mut tx = pool.begin().await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 1. Decrement post upvotes count for posts upvoted by the user
+    sqlx::query(
+        "UPDATE posts SET upvotes = upvotes - 1 WHERE id IN (SELECT post_id FROM post_upvotes WHERE user_id = ?)"
+    )
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 2. Decrement comment upvotes count for comments upvoted by the user
+    sqlx::query(
+        "UPDATE comments SET upvotes = upvotes - 1 WHERE id IN (SELECT comment_id FROM comment_upvotes WHERE user_id = ?)"
+    )
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 3. Delete post upvotes links
+    sqlx::query("DELETE FROM post_upvotes WHERE user_id = ?")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 4. Delete comment upvotes links
+    sqlx::query("DELETE FROM comment_upvotes WHERE user_id = ?")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 5. Delete saved posts links
+    sqlx::query("DELETE FROM saved_posts WHERE user_id = ?")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 6. Nullify user_id on feedbacks
+    sqlx::query("UPDATE feedbacks SET user_id = NULL WHERE user_id = ?")
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // 7. Anonymize user row
+    let deleted_username = format!("deleted_user_{}", user_id);
+    sqlx::query(
+        "UPDATE users SET username = ?, email = NULL, password_hash = NULL, display_name = 'Deleted User', bio = NULL, avatar_url = ? WHERE id = ?"
+    )
+    .bind(&deleted_username)
+    .bind(format!("/api/avatar/{}", deleted_username))
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    tx.commit().await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // Log out (clear cookie)
+    let cookie = Cookie::build(("token", ""))
+        .path("/")
+        .http_only(true)
+        .same_site(axum_extra::extract::cookie::SameSite::Lax)
+        .secure(env::var("NODE_ENV").unwrap_or_default() == "production")
+        .max_age(time::Duration::seconds(0))
+        .build();
+
+    let mut headers = axum::http::HeaderMap::new();
+    headers.insert(
+        axum::http::header::SET_COOKIE,
+        cookie.to_string().parse().unwrap(),
+    );
+
+    Ok((headers, Json("Account deleted and anonymized successfully")))
+}
+
 pub async fn logout() -> impl IntoResponse {
     let cookie = Cookie::build(("token", ""))
         .path("/")
