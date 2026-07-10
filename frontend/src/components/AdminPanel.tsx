@@ -418,11 +418,7 @@ export function AdminPanel() {
         {/* If we are editing post or product, we don't display the main dashboard header */}
         {((activeTab !== 'posts' || !editingPost) && (activeTab !== 'products' || !editingProduct)) && (
           <>
-            {successMessage && (
-              <div className="bg-gb-green-light/10 text-gb-green-light px-4 py-3 mb-6 rounded border border-gb-green-light/30 font-mono text-sm animate-in fade-in duration-300">
-                {successMessage}
-              </div>
-            )}
+
 
             {/* Dashboard Title & Quick Actions */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 border-b border-gb-bg-soft/50 pb-4">
@@ -646,6 +642,14 @@ export function AdminPanel() {
                 )}
               </Button>
             </div>
+          </div>
+        </div>
+      )}
+      {successMessage && (
+        <div className="fixed top-6 right-6 bg-[#282828] border-l-4 border-gb-green-light px-5 py-4 shadow-2xl flex items-center gap-3 z-50 animate-in slide-in-from-right-10 fade-in duration-300">
+          <div className="w-2 h-2 rounded-full bg-gb-green-light animate-ping" />
+          <div className="font-mono text-xs text-gb-fg">
+            <span className="text-gb-green-light font-bold">SUCCESS:</span> {successMessage}
           </div>
         </div>
       )}
