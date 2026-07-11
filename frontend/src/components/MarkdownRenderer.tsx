@@ -5,6 +5,7 @@ import remarkBreaks from "remark-breaks";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { CodeSnippet } from "./CodeSnippet";
 import { QuotesIcon } from "./Icons";
+import { Accordion } from "./Accordion";
 
 const gruvboxStyle = {
   'code[class*="language-"]': {
@@ -89,11 +90,7 @@ const getDir = (children: React.ReactNode) => {
   return /^[\u0600-\u06FF]/.test(text.trim()) ? "rtl" : "ltr";
 };
 
-export function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm, remarkBreaks]}
-      components={{
+const markdownComponents: any = {
         h1: ({ node, children, ...props }) => (
           <h1
             className="text-2xl sm:text-3xl font-mono font-bold text-gb-fg border-b border-gb-bg-light pb-2 mt-10 mb-6"
@@ -392,10 +389,106 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
               </code>
             );
           }
-        },
-      }}
-    >
-      {content}
-    </ReactMarkdown>
+        }
+};
+
+interface Block {
+  type: "markdown" | "accordion";
+  title?: string;
+  content: string;
+}
+
+function parseAccordionBlocks(text: string): Block[] {
+  const blocks: Block[] = [];
+  const lines = text.split("\n");
+  let currentMarkdownLines: string[] = [];
+  let inAccordion = false;
+  let accordionTitle = "";
+  let currentAccordionLines: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith(":::details")) {
+      if (inAccordion) {
+        blocks.push({
+          type: "accordion",
+          title: accordionTitle,
+          content: currentAccordionLines.join("\n"),
+        });
+        currentAccordionLines = [];
+      } else {
+        if (currentMarkdownLines.length > 0) {
+          blocks.push({
+            type: "markdown",
+            content: currentMarkdownLines.join("\n"),
+          });
+          currentMarkdownLines = [];
+        }
+      }
+      inAccordion = true;
+      accordionTitle = trimmed.substring(":::details".length).trim() || "Details";
+    } else if (trimmed === ":::") {
+      if (inAccordion) {
+        blocks.push({
+          type: "accordion",
+          title: accordionTitle,
+          content: currentAccordionLines.join("\n"),
+        });
+        currentAccordionLines = [];
+        inAccordion = false;
+      } else {
+        currentMarkdownLines.push(line);
+      }
+    } else {
+      if (inAccordion) {
+        currentAccordionLines.push(line);
+      } else {
+        currentMarkdownLines.push(line);
+      }
+    }
+  }
+
+  if (inAccordion && currentAccordionLines.length > 0) {
+    blocks.push({
+      type: "accordion",
+      title: accordionTitle,
+      content: currentAccordionLines.join("\n"),
+    });
+  } else if (currentMarkdownLines.length > 0) {
+    blocks.push({
+      type: "markdown",
+      content: currentMarkdownLines.join("\n"),
+    });
+  }
+
+  return blocks;
+}
+
+export function MarkdownRenderer({ content }: MarkdownRendererProps) {
+  const blocks = parseAccordionBlocks(content || "");
+
+  return (
+    <div className="space-y-4">
+      {blocks.map((block, idx) => {
+        if (block.type === "accordion") {
+          return (
+            <Accordion key={idx} title={block.title || "Details"}>
+              <MarkdownRenderer content={block.content} />
+            </Accordion>
+          );
+        }
+        return (
+          <ReactMarkdown
+            key={idx}
+            remarkPlugins={[remarkGfm, remarkBreaks]}
+            components={markdownComponents}
+          >
+            {block.content}
+          </ReactMarkdown>
+        );
+      })}
+    </div>
   );
 }

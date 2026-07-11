@@ -579,7 +579,7 @@ export function AdminPosts({
               >
                 {tab === 'code' && 'Code'}
                 {tab === 'image' && 'Images'}
-                {tab === 'quotes' && 'Quotes/Tables'}
+                {tab === 'quotes' && 'Quotes & Accordions'}
                 {tab === 'basics' && 'Basics'}
               </button>
             ))}
@@ -669,8 +669,8 @@ npm install
             {activeGuideTab === 'quotes' && (
               <div className="space-y-4">
                 <div className="border-b border-gb-bg-light/40 pb-2">
-                  <h3 className="text-gb-blue-light font-bold mb-1">Quotes & Tables</h3>
-                  <p className="text-gb-fg-dark text-[10px]">Structure multi-column data grids and quote elements.</p>
+                  <h3 className="text-gb-blue-light font-bold mb-1">Quotes, Tables & Accordions</h3>
+                  <p className="text-gb-fg-dark text-[10px]">Structure multi-column data, quotes, and collapsible blocks.</p>
                 </div>
                 
                 <div className="space-y-4">
@@ -689,6 +689,16 @@ npm install
                     <p className="text-gb-fg-dark mb-1.5 text-[10px]">Adds vertical border highlight. Adapts direction to RTL automatically.</p>
                     <pre className="bg-gb-bg-soft/40 p-2 border border-gb-bg-light text-[10px] select-all overflow-x-auto">
 {`> This is a key quote to emphasize.`}
+                    </pre>
+                  </div>
+                  <div>
+                    <h4 className="text-gb-orange-light font-bold mb-1">Collapsible Accordion</h4>
+                    <p className="text-gb-fg-dark mb-1.5 text-[10px]">Create interactive collapsible accordion blocks.</p>
+                    <pre className="bg-gb-bg-soft/40 p-2 border border-gb-bg-light text-[10px] select-all overflow-x-auto">
+{`:::details Accordion Title
+This is the hidden accordion content.
+It supports **markdown** inside!
+:::`}
                     </pre>
                   </div>
                 </div>
