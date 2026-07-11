@@ -24,7 +24,7 @@ export function Accordion({ title, children }: AccordionProps) {
       
       {isOpen && (
         <div className="p-5 border-t border-gb-bg-soft/30 bg-gb-bg/50 animate-in fade-in slide-in-from-top-1 duration-200">
-          <div className="border-l-2 border-gb-yellow-light/20 pl-4">
+          <div className="border-l-2 border-gb-yellow-light/20 pl-4 [&_*:last-child]:mb-0">
             {children}
           </div>
         </div>
