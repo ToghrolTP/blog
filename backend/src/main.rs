@@ -76,7 +76,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(path_str) = db_url.strip_prefix("sqlite://") {
         let path = std::path::Path::new(path_str);
         if let Some(parent) = path.parent()
-            && !parent.as_os_str().is_empty() {
+            && !parent.as_os_str().is_empty()
+            && !parent.exists() {
                 std::fs::create_dir_all(parent)?;
             }
     }
