@@ -1,5 +1,5 @@
 import React from 'react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Post, Category } from '../../types';
 import { 
   PencilIcon, 
@@ -73,6 +73,7 @@ export function AdminPosts({
 
   const [showSnippetGuide, setShowSnippetGuide] = useState(false);
   const [activeGuideTab, setActiveGuideTab] = useState<'code' | 'image' | 'quotes' | 'basics'>('code');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this post?')) return;
@@ -482,7 +483,25 @@ export function AdminPosts({
                                       });
                                       if (res.ok) {
                                         const data = await res.json();
-                                        updateContentAndReadTime(currentTranslation.content + `\n![image](${data.url})`);
+                                        const textarea = textareaRef.current;
+                                        if (textarea) {
+                                          const start = textarea.selectionStart;
+                                          const end = textarea.selectionEnd;
+                                          const text = textarea.value;
+                                          const before = text.substring(0, start);
+                                          const after = text.substring(end, text.length);
+                                          const insertText = `\n![image](${data.url})\n`;
+                                          const newContent = before + insertText + after;
+                                          updateContentAndReadTime(newContent);
+
+                                          // Keep focus and select right after the insertion
+                                          setTimeout(() => {
+                                            textarea.focus();
+                                            textarea.selectionStart = textarea.selectionEnd = start + insertText.length;
+                                          }, 0);
+                                        } else {
+                                          updateContentAndReadTime(currentTranslation.content + `\n![image](${data.url})`);
+                                        }
                                       }
                                     } catch(err) { console.error('Upload failed', err); }
                                   }} 
@@ -517,6 +536,7 @@ export function AdminPosts({
                           
                           {!isPreviewMode ? (
                             <Textarea 
+                              ref={textareaRef}
                               rows={15}
                               value={currentTranslation.content}
                               onChange={e => updateContentAndReadTime(e.target.value)}
