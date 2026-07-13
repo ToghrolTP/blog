@@ -125,7 +125,8 @@ export function SidebarTree({
 
   // Group categories by meta-domain
   const groupedCategories = categories.reduce((acc, cat) => {
-    if (metaDomains.includes(cat.metaDomain)) {
+    const count = counts[cat.id] || 0;
+    if (count > 0 && metaDomains.includes(cat.metaDomain)) {
       if (!acc[cat.metaDomain]) {
         acc[cat.metaDomain] = [];
       }
