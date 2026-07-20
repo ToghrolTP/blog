@@ -76,3 +76,8 @@ graphify-out/
 /google*.html
 seo-audit*.md
 .todos/
+
+# ========================
+# Confidential diagnostics logs and reports
+# ========================
+logs-and-reports/
