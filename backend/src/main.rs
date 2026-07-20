@@ -26,6 +26,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Ensure db/ folder is created so hook can write to it if needed
     let _ = std::fs::create_dir_all("db");
 
+    if let Ok(content) = std::fs::read_to_string("db/crash.log") {
+        eprintln!("=== PREVIOUS CRASH LOG ===");
+        eprintln!("{}", content);
+        eprintln!("==========================");
+    }
+
     std::panic::set_hook(Box::new(|panic_info| {
         let msg = if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
             *s

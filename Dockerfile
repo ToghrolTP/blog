@@ -35,13 +35,13 @@ RUN cargo build --release
 # ==============================================================================
 # Stage 3: Runtime image
 # ==============================================================================
-FROM ubuntu:latest AS runtime
+FROM ubuntu:24.04 AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app/backend
-RUN mkdir -p db uploads
+RUN mkdir -p db uploads && chmod 777 db uploads
 
 # Copy compiled binary and static assets
 COPY --from=backend-builder /app/backend/target/release/backend ./backend

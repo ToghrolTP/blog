@@ -319,9 +319,9 @@ export function PostDetail() {
             <BookmarkIcon size={16} className={isSaved ? "fill-current" : ""} />
             <span>{isSaved ? (language === 'fa' ? 'ذخیره شده' : 'Saved') : (language === 'fa' ? 'ذخیره' : 'Save')}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <TagIcon className="opacity-80 text-lg" />
-            <div className="flex gap-2" dir="ltr">
+          <div className="flex items-center gap-2 min-w-0 max-w-full">
+            <TagIcon className="opacity-80 text-lg shrink-0" />
+            <div className="flex gap-2 overflow-x-auto min-w-0 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" dir="ltr">
               {(() => {
                 const isPersian = (tText: string) =>
                   /^[\u0600-\u06FF]/.test(tText.trim());
@@ -332,21 +332,21 @@ export function PostDetail() {
                 const elements: ReactNode[] = [];
 
                 englishTags.forEach((tag) =>
-                  elements.push(<Badge key={tag}>{tag}</Badge>)
+                  elements.push(<Badge key={tag} className="shrink-0">{tag}</Badge>)
                 );
 
                 if (englishTags.length > 0 && persianTags.length > 0) {
                   elements.push(
                     <span
                       key="divider"
-                      className="w-px h-5 bg-gb-fg-dark/30 self-center mx-1"
+                      className="w-px h-5 bg-gb-fg-dark/30 self-center mx-1 shrink-0"
                     >
                     </span>,
                   );
                 }
 
                 persianTags.forEach((tag) =>
-                  elements.push(<Badge key={tag} dir="rtl">{tag}</Badge>)
+                  elements.push(<Badge key={tag} dir="rtl" className="shrink-0">{tag}</Badge>)
                 );
 
                 return elements;

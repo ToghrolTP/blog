@@ -121,8 +121,8 @@ export function PostList({ posts }: PostListProps) {
             {currentTranslation.summary}
           </p>
           
-          <div className="flex items-center justify-between">
-            <div className="flex gap-2 flex-wrap" dir="ltr">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex gap-2 overflow-x-auto min-w-0 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" dir="ltr">
               {(() => {
                 const isPersian = (t: string) => /^[\u0600-\u06FF]/.test(t.trim());
                 const persianTags = post.tags.filter(isPersian).sort();
@@ -130,22 +130,22 @@ export function PostList({ posts }: PostListProps) {
                 const elements: ReactNode[] = [];
                 
                 englishTags.forEach(tag => 
-                  elements.push(<Badge key={tag}>{tag}</Badge>)
+                  elements.push(<Badge key={tag} className="shrink-0">{tag}</Badge>)
                 );
                 
                 if (englishTags.length > 0 && persianTags.length > 0) {
-                  elements.push(<span key="divider" className="w-px h-5 bg-gb-fg-dark/30 self-center mx-1"></span>);
+                  elements.push(<span key="divider" className="w-px h-5 bg-gb-fg-dark/30 self-center mx-1 shrink-0"></span>);
                 }
                 
                 persianTags.forEach(tag => 
-                  elements.push(<Badge key={tag} dir="rtl">{tag}</Badge>)
+                  elements.push(<Badge key={tag} dir="rtl" className="shrink-0">{tag}</Badge>)
                 );
                 
                 return elements;
               })()}
             </div>
             
-            <div className={`flex items-center gap-2 text-sm text-gb-orange-light font-mono opacity-0 group-hover:opacity-100 transition-opacity transform duration-300 ${currentTranslation.language === 'fa' ? 'translate-x-[10px] group-hover:translate-x-0' : 'translate-x-[-10px] group-hover:translate-x-0'}`}>
+            <div className={`flex items-center gap-2 text-sm text-gb-orange-light font-mono opacity-0 group-hover:opacity-100 transition-opacity transform duration-300 shrink-0 ${currentTranslation.language === 'fa' ? 'translate-x-[10px] group-hover:translate-x-0' : 'translate-x-[-10px] group-hover:translate-x-0'}`}>
               <span>{t('read_more')}</span>
               <ArrowRightIcon className={`text-lg ${currentTranslation.language === 'fa' ? 'rotate-180' : ''}`} />
             </div>
